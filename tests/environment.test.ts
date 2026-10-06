@@ -31,3 +31,17 @@ it("public config rejects service-role secrets", () => {
     validatePublicAuth("https://example.supabase.co", encode("service_role")),
   ).toThrow();
 });
+it("native API requests always use the canonical HTTPS host in every stage", () => {
+  for (const stage of ["development", "preview", "production"] as const) {
+    expect(validateApiHost("https://agrobim.digital", stage, true)).toBe(
+      "https://agrobim.digital",
+    );
+    for (const host of [
+      "http://localhost:18081",
+      "http://10.0.2.2:18081",
+      "https://example.com",
+    ]) {
+      expect(() => validateApiHost(host, stage, true)).toThrow();
+    }
+  }
+});

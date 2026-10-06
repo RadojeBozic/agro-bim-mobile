@@ -43,14 +43,19 @@ vi.mock("expo-router", () => ({
   Redirect: "i",
 }));
 vi.mock("../src/runtime", () => ({ api: { request: vi.fn() } }));
-vi.mock("../src/auth/provider", () => ({ useAuth: () => mocks.auth }));
+vi.mock("../src/auth/provider", () => ({
+  useAuth: () => mocks.auth,
+  useCapability: (key: string) =>
+    mocks.auth.status === "signedIn" &&
+    mocks.auth.me?.access.capabilities[key] === true,
+}));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => mocks.query }));
 import Home from "../src/screens/home";
 import Farm from "../src/app/(tabs)/farm/index";
 import Account from "../src/app/(tabs)/more/account";
 import { primaryTabs } from "../src/navigation";
 import { t } from "../src/i18n";
-import { ErrorState } from "../src/components/ui";
+import { ErrorState, GatedAction } from "../src/components/ui";
 import { ApiError } from "../src/core/errors";
 beforeEach(() => {
   mocks.auth = {
@@ -125,4 +130,29 @@ it("account never renders internal backend error details", () => {
 });
 it("signed-out account offers guest CTA", () => {
   expect(renderToStaticMarkup(<Account />)).toContain(t("guestCta"));
+});
+it("advanced denial renders a gate while registered-free farm content stays usable", () => {
+  mocks.auth = {
+    status: "signedIn",
+    me: {
+      user: { id: "x" },
+      farm: { displayName: "Test gazdinstvo" },
+      access: {
+        capabilities: {
+          usePersonalizedFeed: true,
+          runFinancingAnalysis: false,
+        },
+      },
+    },
+  };
+  const html = renderToStaticMarkup(
+    <GatedAction
+      capability="runFinancingAnalysis"
+      label="Advanced operation"
+      onPress={vi.fn()}
+    />,
+  );
+  expect(html).not.toContain("Advanced operation");
+  expect(html).toContain(t("gated"));
+  expect(renderToStaticMarkup(<Farm />)).toContain("Test gazdinstvo");
 });

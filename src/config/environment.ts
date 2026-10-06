@@ -1,6 +1,10 @@
 import { Platform } from "react-native";
 export type Environment = "development" | "preview" | "production";
-export function validateApiHost(value: string, environment: Environment) {
+export function validateApiHost(
+  value: string,
+  environment: Environment,
+  native = false,
+) {
   const url = new URL(value);
   if (
     url.username ||
@@ -20,7 +24,10 @@ export function validateApiHost(value: string, environment: Environment) {
     )
   )
     throw new Error("HTTPS required");
-  if (environment === "production" && url.origin !== "https://agrobim.digital")
+  if (
+    (native || environment === "production") &&
+    url.origin !== "https://agrobim.digital"
+  )
     throw new Error("Invalid production API host");
   return url.origin;
 }
@@ -57,6 +64,7 @@ export const config = {
     validateApiHost(
       process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://agrobim.digital",
       environment,
+      Platform.OS !== "web",
     ) + "/api/v1",
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? "",
   supabaseKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
