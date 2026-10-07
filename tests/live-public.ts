@@ -1,6 +1,11 @@
-// Explicit, read-only live smoke. Excluded from normal tests.
 import { ApiClient } from "../src/core/client";
-import { guestTodaySchema } from "../src/api/contracts";
+import {
+  guestTodaySchema,
+  programmeSchema,
+  financingSchema,
+  productSchema,
+  page,
+} from "../src/api/contracts";
 const api = new ApiClient("https://agrobim.digital/api/v1", {
   token: () => null,
   refresh: async () => null,
@@ -27,6 +32,30 @@ async function main() {
       2,
     ),
   );
+  for (const [endpoint, schema] of [
+    ["/programmes", programmeSchema],
+    ["/financing/products", financingSchema],
+    ["/cenoteka/products", productSchema],
+  ] as const) {
+    const list = await api.request(
+      endpoint + "?limit=20&offset=0",
+      page(schema),
+    );
+    const first = list.data.items[0];
+    const detail = first
+      ? await api.request(endpoint + "/" + first.id, schema)
+      : null;
+    console.log(
+      JSON.stringify({
+        endpoint,
+        status: list.status,
+        count: list.data.items.length,
+        nextOffset: list.data.pagination.nextOffset,
+        detailStatus: detail?.status ?? "no_records",
+        requestId: list.requestId,
+      }),
+    );
+  }
 }
 void main().catch((e) => {
   console.error(

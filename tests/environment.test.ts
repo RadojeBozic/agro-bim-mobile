@@ -45,3 +45,24 @@ it("native API requests always use the canonical HTTPS host in every stage", () 
     }
   }
 });
+
+it.each([
+  ["development", "true", true],
+  ["preview", "true", true],
+  ["development", "false", false],
+  ["preview", undefined, false],
+  ["production", "true", false],
+] as const)(
+  "QA environment %s with flag %s resolves to %s",
+  async (stage, flag, expected) => {
+    vi.resetModules();
+    vi.stubEnv("EXPO_PUBLIC_APP_ENV", stage);
+    vi.stubEnv("EXPO_PUBLIC_ENABLE_QA", flag);
+    try {
+      const { config } = await import("../src/config/environment");
+      expect(config.qaEnabled).toBe(expected);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  },
+);

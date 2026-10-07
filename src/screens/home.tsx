@@ -1,8 +1,12 @@
 import React from "react";
 import { Text } from "react-native";
+import { router } from "expo-router";
+import { ContentRow } from "../components/content";
+import type { ContentItem } from "../content";
 import { useAuth } from "../auth/provider";
 import {
   Body,
+  Button,
   Card,
   Empty,
   ErrorState,
@@ -20,12 +24,7 @@ export default function Home() {
   const data = query.data?.data;
   const sections: {
     label: TranslationKey;
-    items: {
-      title?: string;
-      name?: string;
-      productName?: string;
-      shortBody?: string | null;
-    }[];
+    items: ContentItem[];
     status: string;
   }[] = [];
   if (data && "audience" in data) {
@@ -39,6 +38,7 @@ export default function Home() {
     sections.push(
       { label: "current", ...data.sections.important },
       { label: "programmes", ...data.sections.subsidies },
+      { label: "deadlines", ...data.sections.deadlines },
       { label: "cenoteka", ...data.sections.cenoteka },
       { label: "financing", ...data.sections.financing },
     );
@@ -52,10 +52,7 @@ export default function Home() {
             {auth.me?.farm.displayName ??
               t(auth.me?.farm.completionState ?? "missing")}
           </Body>
-          <Body>
-            {t("capabilities")}:{" "}
-            {Object.values(auth.me!.access.capabilities).filter(Boolean).length}
-          </Body>
+          <Button label={t("farm")} onPress={() => router.push("/farm")} />
         </Card>
       )}
       {query.isPending && <Loading />}
@@ -72,14 +69,24 @@ export default function Home() {
         <Card key={section.label}>
           <Text style={styles.section}>{t(section.label)}</Text>
           {section.status === "unavailable" ? (
-            <Body>{t("internal_error")}</Body>
+            <>
+              <Body>{t("internal_error")}</Body>
+              <Button
+                label={t("retry")}
+                onPress={() => void refresh()}
+                disabled={query.isFetching}
+              />
+            </>
           ) : section.items.length ? (
-            section.items.slice(0, 3).map((item, i) => (
-              <Text key={i} style={styles.homeEntry}>
-                {item.title ?? item.name ?? item.productName ?? t("empty")}
-                {item.shortBody ? " · " + item.shortBody : ""}
-              </Text>
-            ))
+            section.items
+              .slice(0, 3)
+              .map((item, i) => (
+                <ContentRow
+                  key={item.key ?? item.id ?? i}
+                  item={item}
+                  signed={signed}
+                />
+              ))
           ) : (
             <Empty />
           )}
@@ -92,6 +99,17 @@ export default function Home() {
             {data.market.exchange.items.length + data.market.stips.items.length}{" "}
             · {t("current")}
           </Body>
+          {data.market.exchange.items.length +
+            data.market.stips.items.length ===
+            0 && <Empty />}
+          {(data.market.exchange.status === "unavailable" ||
+            data.market.stips.status === "unavailable") && (
+            <Body>{t("internal_error")}</Body>
+          )}
+          <Button
+            label="Pregled tržišnih cena"
+            onPress={() => router.push("/more/market")}
+          />
           {data.market.exchange.items.slice(0, 3).map((item) => (
             <Body key={item.id}>
               {item.commodity}: {item.value ?? "—"} {item.currency ?? ""}

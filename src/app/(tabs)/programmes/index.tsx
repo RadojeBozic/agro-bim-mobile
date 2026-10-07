@@ -1,14 +1,5 @@
 import React from "react";
-import { Text } from "react-native";
-import { Body, Card, Screen, styles } from "../../../components/ui";
-import { t } from "../../../i18n";
-export default function Placeholder() {
-  return (
-    <Screen>
-      <Text style={styles.title}>{t("programmes")}</Text>
-      <Card>
-        <Body>{t("soon")}</Body>
-      </Card>
-    </Screen>
-  );
+import { CatalogList } from "../../../screens/catalog";
+export default function Programmes() {
+  return <CatalogList kind="programmes" />;
 }

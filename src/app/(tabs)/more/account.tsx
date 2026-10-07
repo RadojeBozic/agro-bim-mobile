@@ -1,4 +1,5 @@
 import React from "react";
+import { router } from "expo-router";
 import { Text } from "react-native";
 import { useAuth } from "../../../auth/provider";
 import {
@@ -9,10 +10,10 @@ import {
   Screen,
   styles,
 } from "../../../components/ui";
-import { t, TranslationKey } from "../../../i18n";
+import { t } from "../../../i18n";
 export default function Account() {
   const auth = useAuth();
-  const me = auth.me;
+  const me = auth.status === "signedIn" ? auth.me : null;
   return (
     <Screen>
       <Text style={styles.title}>{t("account")}</Text>
@@ -23,24 +24,10 @@ export default function Account() {
           <Card>
             <Body>{me.user.displayName ?? t("account")}</Body>
             <Body>{t(me.user.emailVerified ? "verified" : "unverified")}</Body>
+            <Body>{me.farm.displayName}</Body>
             <Body>{t(me.farm.completionState)}</Body>
-            <Body>
-              {t("access")}:{" "}
-              {t(
-                (me.access.financingState === "trial_expired"
-                  ? "trial_expired_access"
-                  : me.access.financingState) as TranslationKey,
-              )}
-            </Body>
           </Card>
-          <Card>
-            <Text style={styles.section}>{t("capabilities")}</Text>
-            {Object.entries(me.access.capabilities).map(([key, value]) => (
-              <Body key={key}>
-                {t(key as TranslationKey)}: {t(value ? "enabled" : "disabled")}
-              </Body>
-            ))}
-          </Card>
+          <Button label={t("farm")} onPress={() => router.push("/farm")} />
           <Button label={t("logout")} onPress={() => void auth.logout()} />
         </>
       )}
