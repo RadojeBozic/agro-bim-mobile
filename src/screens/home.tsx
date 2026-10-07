@@ -1,9 +1,5 @@
 import React from "react";
-import { z } from "zod";
 import { Text } from "react-native";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../runtime";
-import { guestTodaySchema, todaySchema } from "../api/contracts";
 import { useAuth } from "../auth/provider";
 import {
   Body,
@@ -16,22 +12,11 @@ import {
   styles,
 } from "../components/ui";
 import { t, TranslationKey } from "../i18n";
-type HomeData =
-  z.output<typeof guestTodaySchema> | z.output<typeof todaySchema>;
+import { useHomeQuery } from "./use-home-query";
 export default function Home() {
   const auth = useAuth();
   const signed = auth.status === "signedIn";
-  const query = useQuery({
-    queryKey: signed
-      ? ["private", auth.me?.user.id, "today"]
-      : ["public", "today"],
-    queryFn: async ({
-      signal,
-    }): Promise<{ data: HomeData; requestId: string; status: number }> =>
-      signed
-        ? api.request("/me/today", todaySchema, { private: true, signal })
-        : api.request("/today", guestTodaySchema, { signal }),
-  });
+  const { query, refresh } = useHomeQuery(signed, auth.me?.user.id);
   const data = query.data?.data;
   const sections: {
     label: TranslationKey;
@@ -59,10 +44,7 @@ export default function Home() {
     );
   }
   return (
-    <Screen
-      refreshing={query.isRefetching}
-      onRefresh={() => void query.refetch()}
-    >
+    <Screen refreshing={query.isFetching} onRefresh={() => void refresh()}>
       <Text style={styles.title}>{t("home")}</Text>
       {signed && (
         <Card>
@@ -78,9 +60,14 @@ export default function Home() {
       )}
       {query.isPending && <Loading />}
       {query.error && (
-        <ErrorState error={query.error} retry={() => void query.refetch()} />
+        <ErrorState
+          error={query.error}
+          compact={!!data}
+          retryDisabled={query.isFetching}
+          retry={() => void refresh()}
+        />
       )}
-      <Timestamp value={query.dataUpdatedAt} />
+      {data && <Timestamp value={query.dataUpdatedAt} />}
       {sections.map((section) => (
         <Card key={section.label}>
           <Text style={styles.section}>{t(section.label)}</Text>
@@ -88,10 +75,10 @@ export default function Home() {
             <Body>{t("internal_error")}</Body>
           ) : section.items.length ? (
             section.items.slice(0, 3).map((item, i) => (
-              <Body key={i}>
+              <Text key={i} style={styles.homeEntry}>
                 {item.title ?? item.name ?? item.productName ?? t("empty")}
                 {item.shortBody ? " · " + item.shortBody : ""}
-              </Body>
+              </Text>
             ))
           ) : (
             <Empty />

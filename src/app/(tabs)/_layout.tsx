@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Text, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { primaryTabs } from "../../navigation";
 import { t } from "../../i18n";
 import { theme } from "../../theme";
@@ -7,6 +8,7 @@ export const unstable_settings = { anchor: "home" };
 const icons = ["⌂", "♧", "◇", "≋", "⋯"];
 export default function TabLayout() {
   const { fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       initialRouteName="home"
@@ -16,13 +18,17 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.color.primary,
         tabBarInactiveTintColor: theme.color.muted,
         tabBarStyle: {
-          minHeight:
+          height:
             theme.navigationHeight +
-            Math.max(0, fontScale - 1) * theme.type.tabLine * 2,
+            Math.max(0, fontScale - 1) *
+              (theme.type.title + theme.type.tabLine * 2) +
+            insets.bottom,
           paddingTop: theme.space.sm,
+          paddingBottom: insets.bottom + theme.space.sm,
         },
         tabBarAllowFontScaling: true,
         tabBarLabelPosition: "below-icon",
+        tabBarItemStyle: { minWidth: 0, paddingHorizontal: theme.space.xs },
       }}
     >
       {primaryTabs.map((name, i) => (
@@ -34,6 +40,9 @@ export default function TabLayout() {
             tabBarAccessibilityLabel: t(name),
             tabBarLabel: ({ color }) => (
               <Text
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
                 style={{
                   color,
                   fontSize: theme.type.tab,
@@ -41,7 +50,7 @@ export default function TabLayout() {
                   textAlign: "center",
                 }}
               >
-                {t(name)}
+                {name === "farm" ? t("farmTab") : t(name)}
               </Text>
             ),
             tabBarIcon: ({ color }) => (

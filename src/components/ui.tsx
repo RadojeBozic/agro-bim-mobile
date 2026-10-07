@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
 import { router, Stack } from "expo-router";
 import { t } from "../i18n";
@@ -24,6 +25,14 @@ export const styles = StyleSheet.create({
     paddingBottom: theme.space.xl,
   },
   text: { fontSize: theme.type.body, color: theme.color.text, lineHeight: 24 },
+  homeEntry: {
+    fontSize: theme.type.body,
+    lineHeight: 24,
+    color: theme.color.text,
+    flexShrink: 1,
+    alignSelf: "stretch",
+    marginBottom: theme.space.sm,
+  },
   muted: {
     fontSize: theme.type.small,
     color: theme.color.muted,
@@ -139,11 +148,20 @@ export function Screen({
   onRefresh,
 }: React.PropsWithChildren<{ refreshing?: boolean; onRefresh?: () => void }>) {
   const auth = useAuth();
+  const insets = useSafeAreaInsets();
   return (
     <ScrollView
       style={styles.page}
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingBottom: theme.space.xl + insets.bottom,
+          paddingLeft: theme.space.md + insets.left,
+          paddingRight: theme.space.md + insets.right,
+        },
+      ]}
+      alwaysBounceVertical
       refreshControl={
         onRefresh ? (
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -187,18 +205,50 @@ export const Gated = () => (
 export function ErrorState({
   error,
   retry,
+  compact = false,
+  retryDisabled = false,
 }: {
   error: unknown;
   retry?: () => void;
+  compact?: boolean;
+  retryDisabled?: boolean;
 }) {
   const code = error instanceof ApiError ? error.code : "internal_error";
   return (
-    <Card>
-      <Text accessibilityRole="alert" style={styles.text}>
+    <View
+      style={[
+        styles.card,
+        compact && { padding: theme.space.sm, gap: theme.space.xs },
+      ]}
+    >
+      <Text
+        accessibilityRole="alert"
+        style={compact ? styles.muted : styles.text}
+      >
         {t(code)}
       </Text>
-      {retry && <Button label={t("retry")} onPress={retry} />}
-    </Card>
+      {retry && !compact && (
+        <Button label={t("retry")} onPress={retry} disabled={retryDisabled} />
+      )}
+      {retry && compact && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("retry")}
+          accessibilityState={{ disabled: retryDisabled }}
+          disabled={retryDisabled}
+          onPress={retry}
+          style={{
+            minHeight: theme.touch,
+            justifyContent: "center",
+            opacity: retryDisabled ? 0.55 : 1,
+          }}
+        >
+          <Text style={[styles.text, { color: theme.color.primary }]}>
+            {t("retry")}
+          </Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 export function GuestCta() {

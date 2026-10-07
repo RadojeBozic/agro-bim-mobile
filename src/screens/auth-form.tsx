@@ -14,6 +14,7 @@ export default function AuthForm({
   const auth = useAuth();
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
+    [passwordVisible, setPasswordVisible] = useState(false),
     [name, setName] = useState(""),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState<TranslationKey | null>(null);
@@ -131,12 +132,19 @@ export default function AuthForm({
               style={styles.input}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!passwordVisible}
+              autoCorrect={false}
               autoCapitalize="none"
               autoComplete={
                 mode === "login" ? "current-password" : "new-password"
               }
             />
+            {mode === "login" && (
+              <Button
+                label={t(passwordVisible ? "hidePassword" : "showPassword")}
+                onPress={() => setPasswordVisible((visible) => !visible)}
+              />
+            )}
           </>
         )}
         <Button

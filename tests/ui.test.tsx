@@ -37,7 +37,11 @@ vi.mock("react-native", () => ({
 vi.mock("@react-native-community/netinfo", () => ({
   default: { addEventListener: () => () => {} },
 }));
+vi.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 24, left: 0 }),
+}));
 vi.mock("expo-router", () => ({
+  useFocusEffect: () => {},
   router: { push: mocks.push },
   Stack: "div",
   Redirect: "i",
@@ -155,4 +159,36 @@ it("advanced denial renders a gate while registered-free farm content stays usab
   expect(html).not.toContain("Advanced operation");
   expect(html).toContain(t("gated"));
   expect(renderToStaticMarkup(<Farm />)).toContain("Test gazdinstvo");
+});
+it("Home keeps valid content and successful timestamp after a refresh error", () => {
+  mocks.query.data = {
+    data: {
+      audience: "guest",
+      sections: {
+        information: {
+          status: "ok",
+          items: [{ title: "Previously loaded real title" }],
+        },
+        programmes: { status: "ok", items: [] },
+        cenoteka: { status: "ok", items: [] },
+        financing: { status: "ok", items: [] },
+      },
+      market: { exchange: { items: [] }, stips: { items: [] } },
+    },
+  };
+  mocks.query.dataUpdatedAt = 1000;
+  mocks.query.error = new ApiError("network");
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain("Previously loaded real title");
+  expect(html).toContain(t("home"));
+  expect(html).toContain(t("network"));
+  expect(html).toContain(t("retry"));
+  expect(html).toContain(t("refreshed"));
+});
+it("Home initial error retains the header and no false success timestamp", () => {
+  mocks.query.error = new ApiError("network");
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain(t("home"));
+  expect(html).toContain(t("retry"));
+  expect(html).not.toContain(t("refreshed"));
 });
