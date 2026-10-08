@@ -1,5 +1,7 @@
 const sr = {
   home: "Početna",
+  homeBrandDescriptor: "Digitalni centar",
+  homeBrandTagline: "Digitalni alati za poljoprivredna gazdinstva",
   welcome: "Dobro došli u AgroBIM",
   welcomeBody:
     "Digitalne informacije i alati za vaše poljoprivredno gazdinstvo.",
@@ -111,6 +113,8 @@ export type TranslationKey = keyof typeof sr;
 const en: Record<TranslationKey, string> = {
   ...sr,
   home: "Home",
+  homeBrandDescriptor: "Digital centre",
+  homeBrandTagline: "Digital tools for agricultural holdings",
   welcome: "Welcome to AgroBIM",
   welcomeBody: "Digital information and tools for your farm.",
   explore: "Choose what you need",

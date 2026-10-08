@@ -3,12 +3,12 @@ import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import type { Href } from "expo-router";
 import { ContentRow } from "../components/content";
+import { HomeBrand } from "../components/home-brand";
 import { TrustLinks } from "../components/trust-links";
 import type { ContentItem } from "../content";
 import { useAuth } from "../auth/provider";
 import {
   Body,
-  BrandMark,
   Card,
   Empty,
   ErrorState,
@@ -86,11 +86,10 @@ export default function Home() {
   return (
     <Screen refreshing={query.isFetching} onRefresh={() => void refresh()}>
       <View style={{ gap: theme.space.md, paddingVertical: theme.space.sm }}>
-        <BrandMark fullName />
+        <HomeBrand />
         <Text accessibilityRole="header" style={styles.title}>
           {t("welcome")}
         </Text>
-        <Body>{t("welcomeBody")}</Body>
       </View>
       <View style={{ gap: theme.space.sm }}>
         <Text accessibilityRole="header" style={styles.muted}>

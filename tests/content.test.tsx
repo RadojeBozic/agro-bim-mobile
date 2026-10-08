@@ -466,9 +466,11 @@ it("Home primary cards navigate to existing routes without login", async () => {
 it("brand and primary actions stay visible on initial request failure", () => {
   m.query.error = new ApiError("network");
   const html = renderToStaticMarkup(<Home />);
-  expect(html).toContain("AgroBIM Digital");
+  expect(html).toContain("Agro BiM");
+  expect(html).toContain("Digitalni centar");
+  expect(html).toContain("Digitalni alati za poljoprivredna gazdinstva");
   expect(html).toContain("Dobro došli u AgroBIM");
-  expect(html).toContain("Digitalne informacije i alati");
+  expect(html).not.toContain("Digitalne informacije i alati");
   expect(html).toContain("Finansiranje");
   expect(html).toContain("Podrška");
   expect(html).toContain("Pokušajte ponovo");
@@ -945,4 +947,33 @@ it("STIPS detail omits unavailable price concepts and never invents an average o
     "Kalenić",
   ])
     expect(text).not.toContain(absent);
+});
+
+it("full Home identity uses the existing mark and scalable text while internal branding stays compact", async () => {
+  const { HomeBrand } = await import("../src/components/home-brand");
+  const { BrandMark } = await import("../src/components/ui");
+  await act(async () => {
+    root = create(<HomeBrand />);
+  });
+  const img = root!.root.findByType("img");
+  expect(img.props.style).toMatchObject({
+    width: 52,
+    height: 52,
+    flexShrink: 0,
+  });
+  const texts = root!.root.findAllByType("span");
+  expect(texts.map((n) => n.children.join(" "))).toEqual([
+    "Agro BiM",
+    "Digitalni centar",
+    "Digitalni alati za poljoprivredna gazdinstva",
+  ]);
+  texts.forEach((n) => {
+    expect(n.props.numberOfLines).toBeUndefined();
+    expect(n.props.allowFontScaling).not.toBe(false);
+  });
+  await act(async () => root!.unmount());
+  root = undefined;
+  const compact = renderToStaticMarkup(<BrandMark />);
+  expect(compact).toContain("AgroBIM");
+  expect(compact).not.toContain("Digitalni centar");
 });
