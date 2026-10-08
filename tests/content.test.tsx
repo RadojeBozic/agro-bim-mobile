@@ -7,6 +7,7 @@ const m = vi.hoisted(() => ({
   options: [] as any[],
   push: vi.fn(),
   request: vi.fn(),
+  openURL: vi.fn(async () => {}),
   auth: { status: "guest", me: null, message: null } as any,
   qa: false,
   query: {
@@ -28,7 +29,7 @@ vi.mock("react-native", () => ({
   TextInput: "input",
   ActivityIndicator: "progress",
   RefreshControl: "i",
-  Linking: { openURL: vi.fn() },
+  Linking: { openURL: m.openURL },
   StyleSheet: { create: (s: unknown) => s },
   AccessibilityInfo: {
     isReduceMotionEnabled: async () => false,
@@ -66,6 +67,9 @@ vi.mock("@tanstack/react-query", () => ({
     return m.query;
   },
 }));
+import { TrustLinks } from "../src/components/trust-links";
+import { availableTrustLinks, trustDestinations } from "../src/config/trust";
+import Account from "../src/app/(tabs)/more/account";
 import Farm from "../src/app/(tabs)/farm/index";
 import Home from "../src/screens/home";
 import { CatalogList, CatalogDetail } from "../src/screens/catalog";
@@ -83,6 +87,7 @@ beforeEach(() => {
   m.qa = false;
   m.push.mockReset();
   m.request.mockReset();
+  m.openURL.mockClear();
   m.auth = { status: "guest", me: null, message: null };
   m.query = {
     isPending: false,
@@ -436,4 +441,196 @@ it("farm renders existing private profile information without raw capability or 
   expect(html).not.toContain("crop_farming");
   expect(html).not.toContain("registered_agricultural_holding");
   expect(m.options[0].queryKey).toEqual(["private", id, "farm-profile"]);
+});
+
+it("Home primary cards navigate to existing routes without login", async () => {
+  await act(async () => {
+    root = create(<Home />);
+  });
+  for (const [title, route] of [
+    ["Za moje gazdinstvo", "/farm"],
+    ["Podsticaji", "/programmes"],
+    ["Cenoteka", "/cenoteka"],
+    ["Finansiranje", "/more/financing"],
+  ]) {
+    const card = root!.root
+      .findAllByType("button")
+      .find((button) => button.props.accessibilityLabel === title)!;
+    expect(card.props.accessibilityRole).toBe("button");
+    expect(card.props.accessibilityHint).toBeTruthy();
+    await act(async () => card.props.onPress());
+    expect(m.push).toHaveBeenLastCalledWith(route);
+  }
+});
+it("brand and primary actions stay visible on initial request failure", () => {
+  m.query.error = new ApiError("network");
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain("AgroBIM Digital");
+  expect(html).toContain("Dobro došli u AgroBIM");
+  expect(html).toContain("Digitalne informacije i alati");
+  expect(html).toContain("Finansiranje");
+  expect(html).toContain("Kontakt / Podrška");
+  expect(html).toContain("Pokušajte ponovo");
+  expect(html).not.toContain("Poslednje osvežavanje");
+});
+it("unavailable Home sections degrade independently and keep the welcome before content", () => {
+  m.query.data = {
+    data: {
+      audience: "guest",
+      sections: {
+        information: { status: "unavailable", items: [] },
+        programmes: {
+          status: "ok",
+          items: [
+            { id, title: "Stvarni poziv", target: { type: "programme", id } },
+          ],
+        },
+        financing: { status: "ok", items: [{ id, title: "Stvarni kredit" }] },
+        cenoteka: {
+          status: "ok",
+          items: [{ id, productName: "Stvarna ponuda" }],
+        },
+      },
+      market: {
+        exchange: { status: "ok", items: [] },
+        stips: { status: "ok", items: [] },
+      },
+    },
+  };
+  const html = renderToStaticMarkup(<Home />);
+  expect(html.indexOf("Dobro došli")).toBeLessThan(
+    html.indexOf("Stvarni poziv"),
+  );
+  expect(html.indexOf("Stvarni kredit")).toBeLessThan(
+    html.indexOf("Stvarna ponuda"),
+  );
+  expect(html).toContain("Usluga trenutno nije dostupna");
+  expect(html).toContain("Pokušajte ponovo");
+});
+it("authenticated Home retains farm summary, deadlines and personalized targets", () => {
+  m.auth = {
+    status: "signedIn",
+    me: {
+      user: { id },
+      farm: { displayName: "Gazdinstvo Marković", completionState: "ready" },
+    },
+  };
+  const section = { status: "ok", items: [] };
+  m.query.data = {
+    data: {
+      profile: {},
+      sections: {
+        important: {
+          status: "ok",
+          items: [
+            {
+              key: "personal",
+              title: "Za vas",
+              shortBody: "Stvarni savet",
+              target: { type: "feed_item", key: "personal" },
+            },
+          ],
+        },
+        deadlines: {
+          status: "ok",
+          items: [{ key: "deadline", title: "Važan rok" }],
+        },
+        subsidies: section,
+        financing: section,
+        cenoteka: section,
+      },
+      market: { exchange: { items: [] }, stips: { items: [] } },
+    },
+  };
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain("Gazdinstvo Marković");
+  expect(html).toContain("Profil je spreman");
+  expect(html).toContain("Za vas");
+  expect(html).toContain("Važan rok");
+  expect(m.options.at(-1).queryKey).toEqual(["private", id, "today"]);
+});
+it("trust links show only configured official destinations and reject placeholders", () => {
+  expect(
+    availableTrustLinks(trustDestinations).map((link) => link.key),
+  ).toEqual(["support"]);
+  const html = renderToStaticMarkup(
+    <TrustLinks
+      destinations={{
+        privacy: "https://agrobim.digital/policy-test",
+        deletion: null,
+        terms: "javascript:alert(1)",
+        support: "https://agrobim.digital/#kontakt",
+      }}
+    />,
+  );
+  expect(html).toContain("Politika privatnosti");
+  expect(html).toContain("Kontakt / Podrška");
+  expect(html).not.toContain("Brisanje naloga");
+  expect(html).not.toContain("Uslovi korišćenja");
+  expect(
+    availableTrustLinks({
+      privacy: "https://agrobim.digital/#kontakt",
+      deletion: "https://elsewhere.test/delete",
+      terms: "http://agrobim.digital/terms",
+      support: "https://user:secret@agrobim.digital/",
+    }),
+  ).toEqual([]);
+  expect(
+    renderToStaticMarkup(
+      <TrustLinks
+        destinations={{
+          privacy: null,
+          deletion: null,
+          terms: null,
+          support: null,
+        }}
+      />,
+    ),
+  ).toBe("");
+});
+it("Home, More and Account share the existing external-link opener for contact", async () => {
+  for (const element of [
+    <Home key="home" />,
+    <More key="more" />,
+    <Account key="account" />,
+  ]) {
+    await act(async () => {
+      root = create(element);
+    });
+    const link = root!.root
+      .findAllByType("button")
+      .find(
+        (button) => button.props.accessibilityLabel === "Kontakt / Podrška",
+      )!;
+    expect(link.props.accessibilityRole).toBe("link");
+    await act(async () => link.props.onPress());
+    expect(m.openURL).toHaveBeenLastCalledWith(
+      "https://agrobim.digital/#kontakt",
+    );
+    await act(async () => root!.unmount());
+    root = undefined;
+  }
+});
+it("navigation card text can grow and the footer retains safe-area padding", async () => {
+  await act(async () => {
+    root = create(<Home />);
+  });
+  const card = root!.root
+    .findAllByType("button")
+    .find(
+      (button) => button.props.accessibilityLabel === "Za moje gazdinstvo",
+    )!;
+  const style = Object.assign({}, ...card.props.style);
+  expect(style.minHeight).toBeGreaterThanOrEqual(48);
+  expect(style.height).toBeUndefined();
+  const texts = card.findAllByType("span");
+  expect(
+    texts.every(
+      (text) =>
+        text.props.numberOfLines === undefined &&
+        text.props.allowFontScaling !== false,
+    ),
+  ).toBe(true);
+  const screen = root!.root.findByType("main");
+  expect(screen.props.contentContainerStyle.at(-1).paddingBottom).toBe(32 + 24);
 });

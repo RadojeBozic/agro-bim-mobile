@@ -1,22 +1,53 @@
 import React from "react";
-import { Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
+import type { Href } from "expo-router";
 import { ContentRow } from "../components/content";
+import { TrustLinks } from "../components/trust-links";
 import type { ContentItem } from "../content";
 import { useAuth } from "../auth/provider";
 import {
   Body,
-  Button,
+  BrandMark,
   Card,
   Empty,
   ErrorState,
   Loading,
+  NavigationCard,
   Screen,
   Timestamp,
   styles,
 } from "../components/ui";
 import { t, TranslationKey } from "../i18n";
+import { theme } from "../theme";
 import { useHomeQuery } from "./use-home-query";
+
+const primaryActions: {
+  title: TranslationKey;
+  description: TranslationKey;
+  icon: string;
+  href: Href;
+}[] = [
+  { title: "farm", description: "farmAction", icon: "♧", href: "/farm" },
+  {
+    title: "programmes",
+    description: "programmesAction",
+    icon: "◇",
+    href: "/programmes",
+  },
+  {
+    title: "cenoteka",
+    description: "cenotekaAction",
+    icon: "≋",
+    href: "/cenoteka",
+  },
+  {
+    title: "financing",
+    description: "financingAction",
+    icon: "↗",
+    href: "/more/financing",
+  },
+];
 export default function Home() {
   const auth = useAuth();
   const signed = auth.status === "signedIn";
@@ -26,98 +57,181 @@ export default function Home() {
     label: TranslationKey;
     items: ContentItem[];
     status: string;
+    href?: Href;
   }[] = [];
   if (data && "audience" in data) {
     sections.push(
       { label: "current", ...data.sections.information },
-      { label: "programmes", ...data.sections.programmes },
-      { label: "cenoteka", ...data.sections.cenoteka },
-      { label: "financing", ...data.sections.financing },
+      { label: "programmes", href: "/programmes", ...data.sections.programmes },
+      {
+        label: "financing",
+        href: "/more/financing",
+        ...data.sections.financing,
+      },
+      { label: "cenoteka", href: "/cenoteka", ...data.sections.cenoteka },
     );
   } else if (data && "profile" in data) {
     sections.push(
       { label: "current", ...data.sections.important },
-      { label: "programmes", ...data.sections.subsidies },
+      { label: "programmes", href: "/programmes", ...data.sections.subsidies },
       { label: "deadlines", ...data.sections.deadlines },
-      { label: "cenoteka", ...data.sections.cenoteka },
-      { label: "financing", ...data.sections.financing },
+      {
+        label: "financing",
+        href: "/more/financing",
+        ...data.sections.financing,
+      },
+      { label: "cenoteka", href: "/cenoteka", ...data.sections.cenoteka },
     );
   }
   return (
     <Screen refreshing={query.isFetching} onRefresh={() => void refresh()}>
-      <Text style={styles.title}>{t("home")}</Text>
+      <View style={{ gap: theme.space.md, paddingVertical: theme.space.sm }}>
+        <BrandMark fullName />
+        <Text accessibilityRole="header" style={styles.title}>
+          {t("welcome")}
+        </Text>
+        <Body>{t("welcomeBody")}</Body>
+      </View>
+      <View style={{ gap: theme.space.sm }}>
+        <Text accessibilityRole="header" style={styles.muted}>
+          {t("explore")}
+        </Text>
+        {primaryActions.map((action) => (
+          <NavigationCard
+            key={action.title}
+            title={t(action.title)}
+            description={t(action.description)}
+            icon={action.icon}
+            href={action.href}
+          />
+        ))}
+      </View>
       {signed && (
         <Card>
+          <Text accessibilityRole="header" style={styles.section}>
+            {t("farmSummary")}
+          </Text>
           <Body>
             {auth.me?.farm.displayName ??
               t(auth.me?.farm.completionState ?? "missing")}
           </Body>
-          <Button label={t("farm")} onPress={() => router.push("/farm")} />
-        </Card>
-      )}
-      {query.isPending && <Loading />}
-      {query.error && (
-        <ErrorState
-          error={query.error}
-          compact={!!data}
-          retryDisabled={query.isFetching}
-          retry={() => void refresh()}
-        />
-      )}
-      {data && <Timestamp value={query.dataUpdatedAt} />}
-      {sections.map((section) => (
-        <Card key={section.label}>
-          <Text style={styles.section}>{t(section.label)}</Text>
-          {section.status === "unavailable" ? (
-            <>
-              <Body>{t("internal_error")}</Body>
-              <Button
-                label={t("retry")}
-                onPress={() => void refresh()}
-                disabled={query.isFetching}
-              />
-            </>
-          ) : section.items.length ? (
-            section.items
-              .slice(0, 3)
-              .map((item, i) => (
-                <ContentRow
-                  key={item.key ?? item.id ?? i}
-                  item={item}
-                  signed={signed}
-                />
-              ))
-          ) : (
-            <Empty />
+          {auth.me?.farm.displayName && (
+            <Text style={styles.muted}>
+              {t(auth.me.farm.completionState ?? "missing")}
+            </Text>
           )}
         </Card>
-      ))}
-      {data && (
-        <Card>
-          <Text style={styles.section}>{t("market")}</Text>
-          <Body>
-            {data.market.exchange.items.length + data.market.stips.items.length}{" "}
-            · {t("current")}
-          </Body>
-          {data.market.exchange.items.length +
-            data.market.stips.items.length ===
-            0 && <Empty />}
-          {(data.market.exchange.status === "unavailable" ||
-            data.market.stips.status === "unavailable") && (
-            <Body>{t("internal_error")}</Body>
-          )}
-          <Button
-            label="Pregled tržišnih cena"
-            onPress={() => router.push("/more/market")}
+      )}
+      <View style={{ gap: theme.space.md, marginTop: theme.space.sm }}>
+        {query.isPending && <Loading />}
+        {query.error && (
+          <ErrorState
+            error={query.error}
+            compact={!!data}
+            retryDisabled={query.isFetching}
+            retry={() => void refresh()}
           />
-          {data.market.exchange.items.slice(0, 3).map((item) => (
-            <Body key={item.id}>
-              {item.commodity}: {item.value ?? "—"} {item.currency ?? ""}
-              {item.unit ? "/" + item.unit : ""}
-            </Body>
-          ))}
-        </Card>
-      )}
+        )}
+        {data && <Timestamp value={query.dataUpdatedAt} />}
+        {sections.map((section) => (
+          <Card key={section.label}>
+            <Text accessibilityRole="header" style={styles.section}>
+              {t(section.label)}
+            </Text>
+            {section.status === "unavailable" ? (
+              <ErrorState
+                error={query.error}
+                compact
+                retryDisabled={query.isFetching}
+                retry={() => void refresh()}
+              />
+            ) : section.items.length ? (
+              section.items
+                .slice(0, 3)
+                .map((item, i) => (
+                  <ContentRow
+                    key={item.key ?? item.id ?? i}
+                    item={item}
+                    signed={signed}
+                  />
+                ))
+            ) : (
+              <Empty />
+            )}
+            {section.href && (
+              <TextLink
+                label={t("browseAll") + " · " + t(section.label)}
+                href={section.href}
+              />
+            )}
+          </Card>
+        ))}
+        {data && (
+          <Card>
+            <Text accessibilityRole="header" style={styles.section}>
+              {t("market")}
+            </Text>
+            {data.market.exchange.items.length +
+              data.market.stips.items.length ===
+            0 ? (
+              data.market.exchange.status === "unavailable" ||
+              data.market.stips.status === "unavailable" ? (
+                <ErrorState
+                  error={query.error}
+                  compact
+                  retry={() => void refresh()}
+                  retryDisabled={query.isFetching}
+                />
+              ) : (
+                <Empty />
+              )
+            ) : (
+              <>
+                <Text style={styles.muted}>
+                  {data.market.exchange.items.length +
+                    data.market.stips.items.length}{" "}
+                  · {t("current")}
+                </Text>
+                {data.market.exchange.items.slice(0, 3).map((item) => (
+                  <Body key={item.id}>
+                    {item.commodity}: {item.value ?? "—"} {item.currency ?? ""}
+                    {item.unit ? "/" + item.unit : ""}
+                  </Body>
+                ))}
+                {(data.market.exchange.status === "unavailable" ||
+                  data.market.stips.status === "unavailable") && (
+                  <ErrorState
+                    error={query.error}
+                    compact
+                    retry={() => void refresh()}
+                    retryDisabled={query.isFetching}
+                  />
+                )}
+              </>
+            )}
+            <TextLink label="Pregled tržišnih cena" href="/more/market" />
+          </Card>
+        )}
+      </View>
+      <View style={{ marginTop: theme.space.sm }}>
+        <TrustLinks />
+      </View>
     </Screen>
+  );
+}
+// Use the existing button/Router behavior with a lighter visual weight for section entry points.
+
+function TextLink({ label, href }: { label: string; href: Href }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={{ minHeight: theme.touch, justifyContent: "center" }}
+      onPress={() => router.push(href)}
+    >
+      <Text style={[styles.text, { color: theme.color.primary }]}>
+        {label} ›
+      </Text>
+    </Pressable>
   );
 }

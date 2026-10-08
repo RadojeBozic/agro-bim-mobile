@@ -5,6 +5,7 @@ import { useAuth } from "../../../auth/provider";
 import { config } from "../../../config/environment";
 import { Body, Button, Card, Screen, styles } from "../../../components/ui";
 import { ExternalLink } from "../../../components/content";
+import { TrustLinks } from "../../../components/trust-links";
 import { t } from "../../../i18n";
 export default function More() {
   const auth = useAuth();
@@ -38,6 +39,7 @@ export default function More() {
           Proizvodnja se otvara na sajtu i može zahtevati prijavu na sajtu.
         </Body>
       </Card>
+      <TrustLinks showAppInfo />
       {config.qaEnabled && auth.status === "signedIn" && (
         <Button label={t("qa")} onPress={() => router.push("/more/qa")} />
       )}

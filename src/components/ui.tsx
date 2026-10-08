@@ -12,7 +12,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
-import { router, Stack } from "expo-router";
+import { router, Stack, type Href } from "expo-router";
+import identity from "../config/identity.json";
+import brandMark from "../../assets/brand/mark.png";
 import { t } from "../i18n";
 import { theme } from "../theme";
 import { ApiError } from "../core/errors";
@@ -106,7 +108,7 @@ export function Button({
     </Pressable>
   );
 }
-export function BrandMark() {
+export function BrandMark({ fullName = false }: { fullName?: boolean }) {
   return (
     <View
       style={{
@@ -116,12 +118,61 @@ export function BrandMark() {
       }}
     >
       <Image
-        source={require("../../assets/brand/mark.png")}
+        source={brandMark}
         style={{ width: 32, height: 32 }}
         accessibilityLabel="AgroBIM"
       />
-      <Text style={styles.section}>AgroBIM</Text>
+      <Text style={[styles.section, { flexShrink: 1 }]}>
+        {fullName ? identity.name : "AgroBIM"}
+      </Text>
     </View>
+  );
+}
+/** Same Router/theme as existing buttons; content grows with font scaling. */
+export function NavigationCard({
+  title,
+  description,
+  icon,
+  href,
+}: {
+  title: string;
+  description: string;
+  icon: string;
+  href: Href;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={description}
+      onPress={() => router.push(href)}
+      style={[
+        styles.card,
+        {
+          minHeight: theme.touch,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.space.md,
+        },
+      ]}
+    >
+      <Text
+        accessible={false}
+        style={{ fontSize: theme.type.title, color: theme.color.primary }}
+      >
+        {icon}
+      </Text>
+      <View style={{ flex: 1, minWidth: 0, gap: theme.space.xs }}>
+        <Text style={[styles.text, { fontWeight: "600" }]}>{title}</Text>
+        <Text style={styles.muted}>{description}</Text>
+      </View>
+      <Text
+        accessible={false}
+        style={[styles.text, { color: theme.color.primary }]}
+      >
+        ›
+      </Text>
+    </Pressable>
   );
 }
 export function Offline() {

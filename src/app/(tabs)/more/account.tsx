@@ -10,6 +10,7 @@ import {
   Screen,
   styles,
 } from "../../../components/ui";
+import { TrustLinks } from "../../../components/trust-links";
 import { t } from "../../../i18n";
 export default function Account() {
   const auth = useAuth();
@@ -31,6 +32,7 @@ export default function Account() {
           <Button label={t("logout")} onPress={() => void auth.logout()} />
         </>
       )}
+      <TrustLinks />
     </Screen>
   );
 }

@@ -80,7 +80,7 @@ beforeEach(() => {
 });
 it("guest shell launches without a login wall", () => {
   const html = renderToStaticMarkup(<Home />);
-  expect(html).toContain("Početna");
+  expect(html).toContain(t("welcome"));
   expect(html).not.toContain('type="password"');
 });
 it("guest farm screen includes login and registration CTA", () => {
@@ -180,7 +180,7 @@ it("Home keeps valid content and successful timestamp after a refresh error", ()
   mocks.query.error = new ApiError("network");
   const html = renderToStaticMarkup(<Home />);
   expect(html).toContain("Previously loaded real title");
-  expect(html).toContain(t("home"));
+  expect(html).toContain(t("welcome"));
   expect(html).toContain(t("network"));
   expect(html).toContain(t("retry"));
   expect(html).toContain(t("refreshed"));
@@ -188,7 +188,7 @@ it("Home keeps valid content and successful timestamp after a refresh error", ()
 it("Home initial error retains the header and no false success timestamp", () => {
   mocks.query.error = new ApiError("network");
   const html = renderToStaticMarkup(<Home />);
-  expect(html).toContain(t("home"));
+  expect(html).toContain(t("welcome"));
   expect(html).toContain(t("retry"));
   expect(html).not.toContain(t("refreshed"));
 });
