@@ -87,7 +87,8 @@ beforeEach(() => {
   m.qa = false;
   m.push.mockReset();
   m.request.mockReset();
-  m.openURL.mockClear();
+  m.openURL.mockReset();
+  m.openURL.mockResolvedValue(undefined);
   m.auth = { status: "guest", me: null, message: null };
   m.query = {
     isPending: false,
@@ -469,7 +470,7 @@ it("brand and primary actions stay visible on initial request failure", () => {
   expect(html).toContain("Dobro došli u AgroBIM");
   expect(html).toContain("Digitalne informacije i alati");
   expect(html).toContain("Finansiranje");
-  expect(html).toContain("Kontakt / Podrška");
+  expect(html).toContain("Podrška");
   expect(html).toContain("Pokušajte ponovo");
   expect(html).not.toContain("Poslednje osvežavanje");
 });
@@ -552,19 +553,19 @@ it("authenticated Home retains farm summary, deadlines and personalized targets"
 it("trust links show only configured official destinations and reject placeholders", () => {
   expect(
     availableTrustLinks(trustDestinations).map((link) => link.key),
-  ).toEqual(["support"]);
+  ).toEqual(["privacy", "terms", "deletion", "support"]);
   const html = renderToStaticMarkup(
     <TrustLinks
       destinations={{
         privacy: "https://agrobim.digital/policy-test",
         deletion: null,
         terms: "javascript:alert(1)",
-        support: "https://agrobim.digital/#kontakt",
+        support: "https://agrobim.digital/podrska",
       }}
     />,
   );
   expect(html).toContain("Politika privatnosti");
-  expect(html).toContain("Kontakt / Podrška");
+  expect(html).toContain("Podrška");
   expect(html).not.toContain("Brisanje naloga");
   expect(html).not.toContain("Uslovi korišćenja");
   expect(
@@ -599,13 +600,11 @@ it("Home, More and Account share the existing external-link opener for contact",
     });
     const link = root!.root
       .findAllByType("button")
-      .find(
-        (button) => button.props.accessibilityLabel === "Kontakt / Podrška",
-      )!;
+      .find((button) => button.props.accessibilityLabel === "Podrška")!;
     expect(link.props.accessibilityRole).toBe("link");
     await act(async () => link.props.onPress());
     expect(m.openURL).toHaveBeenLastCalledWith(
-      "https://agrobim.digital/#kontakt",
+      "https://agrobim.digital/podrska",
     );
     await act(async () => root!.unmount());
     root = undefined;
@@ -633,4 +632,107 @@ it("navigation card text can grow and the footer retains safe-area padding", asy
   ).toBe(true);
   const screen = root!.root.findByType("main");
   expect(screen.props.contentContainerStyle.at(-1).paddingBottom).toBe(32 + 24);
+});
+
+const officialLegalLinks = [
+  ["Politika privatnosti", "https://agrobim.digital/politika-privatnosti"],
+  ["Uslovi korišćenja", "https://agrobim.digital/uslovi-koriscenja"],
+  ["Brisanje naloga", "https://agrobim.digital/brisanje-naloga"],
+  ["Podrška", "https://agrobim.digital/podrska"],
+] as const;
+it("config contains exactly the four official public URLs with no legacy destinations", () => {
+  expect(trustDestinations).toEqual({
+    privacy: officialLegalLinks[0][1],
+    terms: officialLegalLinks[1][1],
+    deletion: officialLegalLinks[2][1],
+    support: officialLegalLinks[3][1],
+  });
+  expect(
+    Object.values(trustDestinations).every(
+      (url) =>
+        url?.startsWith("https://agrobim.digital/") &&
+        !url.includes("#kontakt"),
+    ),
+  ).toBe(true);
+});
+it.each(["guest", "signedIn"])(
+  "all legal rows on Home, More and Account open exact public URLs for %s",
+  async (status) => {
+    m.auth = {
+      status,
+      me:
+        status === "signedIn"
+          ? {
+              user: { id, displayName: "Test", emailVerified: true },
+              farm: {
+                displayName: "Test gazdinstvo",
+                completionState: "ready",
+              },
+            }
+          : null,
+    };
+    for (const element of [
+      <Home key="home" />,
+      <More key="more" />,
+      <Account key="account" />,
+    ]) {
+      await act(async () => {
+        root = create(element);
+      });
+      for (const [title, url] of officialLegalLinks) {
+        const matches = root!.root
+          .findAllByType("button")
+          .filter((button) => button.props.accessibilityLabel === title);
+        expect(matches).toHaveLength(1);
+        const link = matches[0];
+        expect(link.props.accessibilityRole).toBe("link");
+        expect(link.props.style.minHeight).toBeGreaterThanOrEqual(48);
+        expect(
+          link
+            .findAllByType("span")
+            .every(
+              (text) =>
+                text.props.numberOfLines === undefined &&
+                text.props.allowFontScaling !== false,
+            ),
+        ).toBe(true);
+        await act(async () => link.props.onPress());
+        expect(m.openURL).toHaveBeenLastCalledWith(url);
+      }
+      expect(m.request).not.toHaveBeenCalled();
+      expect(
+        root!.root
+          .findAllByType("button")
+          .some((button) =>
+            /Obriši|Potvrdi brisanje/.test(
+              button.props.accessibilityLabel ?? "",
+            ),
+          ),
+      ).toBe(false);
+      await act(async () => root!.unmount());
+      root = undefined;
+    }
+  },
+);
+it("failed external legal opening shows the existing retry state and retries the same URL", async () => {
+  m.openURL.mockRejectedValueOnce(new Error("No URL handler"));
+  await act(async () => {
+    root = create(<TrustLinks />);
+  });
+  const deletionLink = root!.root
+    .findAllByType("button")
+    .find((button) => button.props.accessibilityLabel === "Brisanje naloga")!;
+  await act(async () => deletionLink.props.onPress());
+  expect(JSON.stringify(root!.toJSON())).toContain("Nije moguće povezati se");
+  const retry = root!.root
+    .findAllByType("button")
+    .find((button) => button.props.accessibilityLabel === "Pokušajte ponovo")!;
+  await act(async () => retry.props.onPress());
+  expect(m.openURL).toHaveBeenLastCalledWith(
+    "https://agrobim.digital/brisanje-naloga",
+  );
+  expect(JSON.stringify(root!.toJSON())).not.toContain(
+    "Nije moguće povezati se",
+  );
+  expect(m.request).not.toHaveBeenCalled();
 });

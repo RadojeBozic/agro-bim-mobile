@@ -1,15 +1,12 @@
 import { safePublicUrl } from "../content";
 export type TrustKey = "privacy" | "deletion" | "terms" | "support";
 export type TrustDestinations = Record<TrustKey, string | null>;
-/** Source: agro-bim-next CallToAction.tsx (Section id="kontakt").
- * Privacy/terms in site.ts point to contact placeholders, not policies.
- * No public deletion-request page was found. Keep unverified destinations absent.
- */
+/** Official public destinations supplied in AGRO-MOB-002C1, verified without login. */
 export const trustDestinations: TrustDestinations = {
-  privacy: null,
-  deletion: null,
-  terms: null,
-  support: "https://agrobim.digital/#kontakt",
+  privacy: "https://agrobim.digital/politika-privatnosti",
+  terms: "https://agrobim.digital/uslovi-koriscenja",
+  deletion: "https://agrobim.digital/brisanje-naloga",
+  support: "https://agrobim.digital/podrska",
 };
 const officialOrigins = ["https://agrobim.digital", "https://agro-bim.com"];
 export function availableTrustLinks(destinations: TrustDestinations) {
