@@ -1,11 +1,13 @@
 // Local development only. Fixed upstream, restricted routes; no request/response logging.
 const upstream = "https://agrobim.digital";
+const stipsRoute =
+  /^\/api\/v1\/market\/stips\/products(?:\/[a-zA-Z0-9_.-]{1,80})?(?:\?[^#]*)?$/;
 const routes =
-  /^\/api\/v1\/(today|me(?:\/(farm-profile|today|feed|financing-analysis))?|programmes(?:\/[a-f0-9-]{36}\/(check-context|checks))?)(?:\?[^#]*)?$/i;
+  /^\/api\/v1\/(today|me(?:\/(farm-profile|today|feed|financing-analysis))?|programmes(?:\/[a-f0-9-]{36}\/(check-context|checks))?|cenoteka\/products(?:\/[a-f0-9-]{36})?)(?:\?[^#]*)?$/i;
 module.exports = async function proxy(req, res) {
   if (
     (req.headers.origin && req.headers.origin !== "http://localhost:18081") ||
-    !routes.test(req.url ?? "")
+    !(routes.test(req.url ?? "") || stipsRoute.test(req.url ?? ""))
   ) {
     res.writeHead(403);
     res.end();
@@ -43,7 +45,12 @@ module.exports = async function proxy(req, res) {
       }
       chunks.push(chunk);
     }
-    const response = await fetch(upstream + req.url, {
+    const target =
+      process.env.AGROBIM_STIPS_LOCAL_QA === "true" &&
+      stipsRoute.test(req.url ?? "")
+        ? "http://127.0.0.1:18082"
+        : upstream;
+    const response = await fetch(target + req.url, {
       method: req.method,
       redirect: "error",
       signal: AbortSignal.timeout(15000),

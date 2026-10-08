@@ -736,3 +736,213 @@ it("failed external legal opening shows the existing retry state and retries the
   );
   expect(m.request).not.toHaveBeenCalled();
 });
+import { StipsDetail, StipsList } from "../src/screens/stips";
+import { stipsDetailSchema } from "../src/api/stips-contracts";
+const stipsRow = {
+  id,
+  location: "Beograd",
+  locationDetail: "Kalenić",
+  locationKind: "city",
+  marketType: "zelena_pijaca",
+  priceRole: "dominant",
+  minimum: 100,
+  dominant: 120,
+  maximum: 140,
+  single: null,
+  currency: "RSD",
+  unit: "kg",
+  variety: "Salatar",
+  quality: null,
+  attributes: { pakovanje: "Gajba" },
+  periodFrom: "2026-09-21",
+  periodTo: "2026-09-27",
+  bulletinNumber: 39,
+  reportYear: 2026,
+  freshness: "fresh",
+  attribution: {
+    name: "STIPS",
+    publicUrl: "https://www.stips.minpolj.gov.rs/report.pdf",
+    publishedAt: null,
+    checkedAt: null,
+    verifiedAt: null,
+    validUntil: null,
+  },
+};
+const stipsProduct = {
+  code: "krastavac",
+  name: "Krastavac",
+  category: "vegetable",
+  periodFrom: "2026-09-21",
+  periodTo: "2026-09-27",
+  observationCount: 2,
+  sample: stipsRow,
+};
+const stipsData = {
+  product: stipsProduct,
+  items: [stipsRow],
+  matchingCount: 2,
+  pagination: { limit: 20, offset: 0, nextOffset: null },
+};
+const nativeText = () =>
+  root!.root
+    .findAllByType("span")
+    .flatMap((n) => n.children.filter((c) => typeof c === "string"))
+    .join(" ");
+it("STIPS list navigates by actual commodity code and keeps supplier offers accessible", async () => {
+  m.query.data = {
+    data: {
+      items: [stipsProduct],
+      pagination: { limit: 20, offset: 0, nextOffset: null },
+    },
+  };
+  await act(async () => {
+    root = create(<StipsList />);
+  });
+  const productButton = root!.root
+    .findAllByType("button")
+    .find((b) => b.props.accessibilityLabel === "Krastavac")!;
+  await act(async () => productButton.props.onPress());
+  expect(m.push).toHaveBeenCalledWith({
+    pathname: "/cenoteka/stips/[code]",
+    params: { code: "krastavac" },
+  });
+  const supplierButton = root!.root
+    .findAllByType("button")
+    .find((b) => b.props.accessibilityLabel === "Ponude dobavljača")!;
+  await act(async () => supplierButton.props.onPress());
+  expect(m.push).toHaveBeenCalledWith("/cenoteka/suppliers");
+  expect(nativeText()).toContain("Kalenić");
+  expect(nativeText()).toContain("120 RSD/kg");
+});
+it("STIPS detail requests exact product and renders location, variant, price roles and actual official URL", async () => {
+  m.params = { code: "krastavac" };
+  m.query.data = { data: stipsDetailSchema.parse(stipsData) };
+  await act(async () => {
+    root = create(<StipsDetail />);
+  });
+  await m.options[0].queryFn({ signal: undefined });
+  expect(m.request.mock.calls[0][0]).toBe(
+    "/market/stips/products/krastavac?limit=20&offset=0&q=",
+  );
+  const text = nativeText();
+  for (const v of [
+    "Kalenić",
+    "Zelena pijaca",
+    "Dominantna cena",
+    "120 RSD/kg",
+    "100 RSD/kg",
+    "140 RSD/kg",
+    "Salatar",
+    "Gajba",
+  ])
+    expect(text).toContain(v);
+  expect(text).not.toContain("Prosečna");
+  const link = root!.root
+    .findAllByType("button")
+    .find((b) => b.props.accessibilityLabel === "Otvori zvanični izvor")!;
+  await act(async () => link.props.onPress());
+  expect(m.openURL).toHaveBeenCalledWith(stipsRow.attribution.publicUrl);
+});
+it("STIPS detail search changes scoped query and resets pagination without changing product", async () => {
+  m.params = { code: "krastavac" };
+  m.query.data = { data: stipsData };
+  await act(async () => {
+    root = create(<StipsDetail />);
+  });
+  await act(async () =>
+    root!.root.findByType("input").props.onChangeText("Niš"),
+  );
+  await act(async () =>
+    root!.root
+      .findAllByType("button")
+      .find((b) => b.props.accessibilityLabel === "Pretraži")!
+      .props.onPress(),
+  );
+  const o = m.options.at(-1);
+  expect(o.queryKey).toEqual([
+    "public",
+    "stips",
+    "detail",
+    "krastavac",
+    "Niš",
+    0,
+  ]);
+  await o.queryFn({ signal: undefined });
+  expect(m.request.mock.calls[0][0]).toContain("q=Ni%C5%A1");
+});
+it("STIPS invalid route disables requests, while empty public product renders a separate empty state", async () => {
+  m.params = { code: "bad/code" };
+  await act(async () => {
+    root = create(<StipsDetail />);
+  });
+  expect(m.options[0].enabled).toBe(false);
+  expect(m.request).not.toHaveBeenCalled();
+  await act(async () => root!.unmount());
+  root = undefined;
+  m.params = { code: "known" };
+  m.query.data = {
+    data: {
+      ...stipsData,
+      product: { ...stipsProduct, observationCount: 0, sample: null },
+      items: [],
+      matchingCount: 0,
+    },
+  };
+  await act(async () => {
+    root = create(<StipsDetail />);
+  });
+  expect(nativeText()).toContain(
+    "Za ovaj proizvod trenutno nema dostupnih podataka po pijacama.",
+  );
+  expect(root!.root.findAllByType("input")).toHaveLength(0);
+});
+it("STIPS refetch failure preserves cached observations and retries without cancelling work", async () => {
+  m.params = { code: "krastavac" };
+  m.query.data = { data: stipsData };
+  m.query.error = new ApiError("network");
+  await act(async () => {
+    root = create(<StipsDetail />);
+  });
+  expect(nativeText()).toContain("Kalenić");
+  const retry = root!.root
+    .findAllByType("button")
+    .find((b) => b.props.accessibilityLabel === "Pokušajte ponovo")!;
+  expect(retry).toBeDefined();
+  await act(async () => retry.props.onPress());
+  expect(m.query.refetch).toHaveBeenCalledWith({ cancelRefetch: false });
+});
+
+it("STIPS detail omits unavailable price concepts and never invents an average or market", async () => {
+  m.params = { code: "krastavac" };
+  m.query.data = {
+    data: {
+      ...stipsData,
+      items: [
+        {
+          ...stipsRow,
+          dominant: null,
+          minimum: null,
+          maximum: null,
+          single: 90,
+          priceRole: "single",
+          location: "Niš",
+          locationDetail: null,
+        },
+      ],
+    },
+  };
+  await act(async () => {
+    root = create(<StipsDetail />);
+  });
+  const text = nativeText();
+  expect(text).toContain("90 RSD/kg");
+  expect(text).toContain("Niš");
+  for (const absent of [
+    "Dominantna cena",
+    "Najniža cena",
+    "Najviša cena",
+    "Prosečna",
+    "Kalenić",
+  ])
+    expect(text).not.toContain(absent);
+});
