@@ -27,6 +27,7 @@ vi.mock("react-native", () => ({
   Image: "img",
   ScrollView: "main",
   TextInput: "input",
+  Keyboard: { dismiss: vi.fn() },
   ActivityIndicator: "progress",
   RefreshControl: "i",
   Linking: { openURL: m.openURL },
@@ -78,6 +79,7 @@ import Home from "../src/screens/home";
 import { CatalogList, CatalogDetail } from "../src/screens/catalog";
 import Information from "../src/screens/information";
 import More from "../src/app/(tabs)/more/index";
+import Calculator from "../src/app/(tabs)/more/calculator";
 import QA from "../src/app/(tabs)/more/qa";
 import { contentHref, safePublicUrl, label } from "../src/content";
 import { findFeedItem } from "../src/screens/feed-query";
@@ -302,7 +304,7 @@ it("QA menu and direct route are gated independently", () => {
   expect(renderToStaticMarkup(<More />)).not.toContain("Interna QA provera");
   expect(renderToStaticMarkup(<QA />)).toContain("redirect");
   m.qa = true;
-  expect(renderToStaticMarkup(<More />)).toContain("Interna QA provera");
+  expect(renderToStaticMarkup(<More />)).not.toContain("Interna QA provera");
   expect(renderToStaticMarkup(<QA />)).toContain("Interna QA provera");
   m.auth.status = "guest";
   expect(renderToStaticMarkup(<More />)).not.toContain("Interna QA provera");
@@ -397,7 +399,8 @@ it("financing preserves instrument type, zero rates and omits absent amounts", (
 it("Više exposes real destinations and explicitly marks the existing web tools", () => {
   const html = renderToStaticMarkup(<More />);
   expect(html).toContain("Finansiranje");
-  expect(html).toContain("Kalkulator finansiranja · web");
+  expect(html).toContain("Kalkulator finansiranja");
+  expect(html).not.toContain("Kalkulator finansiranja · web");
   expect(html).toContain("Proizvodnja i parcele · web");
   expect(html).not.toContain("Uskoro");
   expect(html).not.toContain("Obaveštenja");
@@ -1070,3 +1073,91 @@ it.each([500, 503])(
     expect(nativeText()).toContain("Pokušajte ponovo");
   },
 );
+
+it("guest calculator calculates locally, pages schedule, clears stale results and shows validation", async () => {
+  await act(async () => {
+    root = create(<Calculator />);
+  });
+  const press = async (label: string) => {
+    const button = root!.root
+      .findAllByType("button" as any)
+      .find((node) => node.props.accessibilityLabel === label)!;
+    expect(button).toBeTruthy();
+    await act(async () => button.props.onPress());
+  };
+  await press("Izračunaj");
+  expect(nativeText()).toContain("Informativni obračun");
+  expect(nativeText()).toMatch(/Rata\s+12/);
+  expect(nativeText()).not.toMatch(/Rata\s+13/);
+  await press("Sledeće rate");
+  expect(nativeText()).toMatch(/Rata\s+13/);
+  expect(nativeText()).not.toMatch(/Rata\s+1\s/);
+  await press("Prethodne rate");
+  expect(nativeText()).toMatch(/Rata\s+12/);
+  const rate = root!.root
+    .findAllByType("input" as any)
+    .find(
+      (node) =>
+        node.props.accessibilityLabel ===
+        "Godišnja nominalna kamatna stopa (%)",
+    )!;
+  await act(async () => rate.props.onChangeText(""));
+  expect(nativeText()).not.toContain("Plan otplate");
+  await press("Izračunaj");
+  expect(nativeText()).toContain("Kamatna stopa mora biti između");
+  expect(m.request).not.toHaveBeenCalled();
+  expect(m.options).toHaveLength(0);
+  expect(m.push).not.toHaveBeenCalled();
+});
+it("More and Financing open the native calculator without product inference", async () => {
+  for (const screen of [
+    <More key="more" />,
+    <CatalogList key="financing" kind="financing" />,
+  ]) {
+    await act(async () => {
+      root = create(screen);
+    });
+    const button = root!.root
+      .findAllByType("button" as any)
+      .find(
+        (node) => node.props.accessibilityLabel === "Kalkulator finansiranja",
+      )!;
+    expect(button).toBeTruthy();
+    await act(async () => button.props.onPress());
+    expect(m.push).toHaveBeenLastCalledWith("/more/calculator");
+    await act(async () => root!.unmount());
+    root = undefined;
+  }
+});
+it("term unit switches preserve duration and selecting the current unit changes nothing", async () => {
+  await act(async () => {
+    root = create(<Calculator />);
+  });
+  const select = async (label: string) => {
+    const button = root!.root
+      .findAllByType("button" as any)
+      .find((node) => node.props.accessibilityLabel === label)!;
+    await act(async () => button.props.onPress());
+  };
+  await select("Godine");
+  expect(
+    root!.root
+      .findAllByType("input" as any)
+      .find((node) => node.props.accessibilityLabel === "Rok otplate (godine)")!
+      .props.value,
+  ).toBe("5");
+  await select("Meseci");
+  expect(
+    root!.root
+      .findAllByType("input" as any)
+      .find((node) => node.props.accessibilityLabel === "Rok otplate (meseci)")!
+      .props.value,
+  ).toBe("60");
+  await select("Godine");
+  expect(
+    root!.root
+      .findAllByType("input" as any)
+      .find((node) => node.props.accessibilityLabel === "Rok otplate (godine)")!
+      .props.value,
+  ).toBe("5");
+});

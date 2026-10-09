@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Text } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { z } from "zod";
 import { api } from "../runtime";
 import {
@@ -70,6 +70,12 @@ export function CatalogList({ kind }: { kind: Kind }) {
   return (
     <Screen refreshing={query.isRefetching} onRefresh={refresh}>
       <Text style={styles.title}>{t(catalog.title)}</Text>
+      {kind === "financing" && (
+        <Button
+          label="Kalkulator finansiranja"
+          onPress={() => router.push("/more/calculator")}
+        />
+      )}
       {query.isPending && <Loading />}
       {query.error && (
         <ErrorState
@@ -286,6 +292,10 @@ export function CatalogDetail({ kind }: { kind: Kind }) {
                   <Field title="Obezbeđenje" value={item.collateral} />
                   <Field title="Dokumentacija" value={item.documents} />
                   <Field title="Napomena" value={item.publicNote} />
+                  <Button
+                    label="Kalkulator finansiranja"
+                    onPress={() => router.push("/more/calculator")}
+                  />
                 </Card>
               )}
               {"attribution" in item && (

@@ -2,7 +2,6 @@ import React from "react";
 import { router } from "expo-router";
 import { Text } from "react-native";
 import { useAuth } from "../../../auth/provider";
-import { config } from "../../../config/environment";
 import { Body, Button, Card, Screen, styles } from "../../../components/ui";
 import { ExternalLink } from "../../../components/content";
 import { TrustLinks } from "../../../components/trust-links";
@@ -26,11 +25,11 @@ export default function More() {
       />
       <Button label={t("market")} onPress={() => router.push("/more/market")} />
       <Button label={t("profile")} onPress={() => router.push("/farm")} />
+      <Button
+        label="Kalkulator finansiranja"
+        onPress={() => router.push("/more/calculator")}
+      />
       <Card>
-        <ExternalLink
-          title="Kalkulator finansiranja · web"
-          url="https://agrobim.digital/kalkulator-finansiranja"
-        />
         <ExternalLink
           title="Proizvodnja i parcele · web"
           url="https://agrobim.digital/proizvodnja"
@@ -40,9 +39,6 @@ export default function More() {
         </Body>
       </Card>
       <TrustLinks showAppInfo />
-      {config.qaEnabled && auth.status === "signedIn" && (
-        <Button label={t("qa")} onPress={() => router.push("/more/qa")} />
-      )}
     </Screen>
   );
 }
