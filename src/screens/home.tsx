@@ -84,7 +84,11 @@ export default function Home() {
     );
   }
   return (
-    <Screen refreshing={query.isFetching} onRefresh={() => void refresh()}>
+    <Screen
+      topInset
+      refreshing={query.isFetching}
+      onRefresh={() => void refresh()}
+    >
       <View style={{ gap: theme.space.md, paddingVertical: theme.space.sm }}>
         <HomeBrand />
         <Text accessibilityRole="header" style={styles.title}>

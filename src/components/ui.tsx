@@ -197,7 +197,12 @@ export function Screen({
   children,
   refreshing = false,
   onRefresh,
-}: React.PropsWithChildren<{ refreshing?: boolean; onRefresh?: () => void }>) {
+  topInset = false,
+}: React.PropsWithChildren<{
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  topInset?: boolean;
+}>) {
   const auth = useAuth();
   const insets = useSafeAreaInsets();
   return (
@@ -207,6 +212,7 @@ export function Screen({
       contentContainerStyle={[
         styles.content,
         {
+          paddingTop: theme.space.md + (topInset ? insets.top : 0),
           paddingBottom: theme.space.xl + insets.bottom,
           paddingLeft: theme.space.md + insets.left,
           paddingRight: theme.space.md + insets.right,
@@ -258,8 +264,10 @@ export function ErrorState({
   retry,
   compact = false,
   retryDisabled = false,
+  message,
 }: {
   error: unknown;
+  message?: string;
   retry?: () => void;
   compact?: boolean;
   retryDisabled?: boolean;
@@ -276,7 +284,7 @@ export function ErrorState({
         accessibilityRole="alert"
         style={compact ? styles.muted : styles.text}
       >
-        {t(code)}
+        {message ?? t(code)}
       </Text>
       {retry && !compact && (
         <Button label={t("retry")} onPress={retry} disabled={retryDisabled} />
@@ -314,7 +322,7 @@ export function GuestCta() {
     </Card>
   );
 }
-export function TabStack() {
+export function TabStack({ children }: React.PropsWithChildren) {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -333,7 +341,9 @@ export function TabStack() {
         contentStyle: { backgroundColor: theme.color.background },
         animation: reduced ? "none" : "default",
       }}
-    />
+    >
+      {children}
+    </Stack>
   );
 }
 export function Timestamp({ value }: { value: number }) {

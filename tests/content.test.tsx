@@ -46,7 +46,10 @@ vi.mock("expo-router", () => ({
   useLocalSearchParams: () => m.params,
   useFocusEffect: () => {},
   router: { push: m.push },
-  Stack: "div",
+  Stack: Object.assign(
+    (props: React.PropsWithChildren) => <div>{props.children}</div>,
+    { Screen: "stack-screen" },
+  ),
   Redirect: "redirect",
 }));
 vi.mock("../src/runtime", () => ({ api: { request: m.request } }));
@@ -977,3 +980,93 @@ it("full Home identity uses the existing mark and scalable text while internal b
   expect(compact).toContain("AgroBIM");
   expect(compact).not.toContain("Digitalni centar");
 });
+
+it("STIPS list distinguishes a genuine empty search from a missing endpoint and retains network feedback", async () => {
+  m.query.data = {
+    data: { items: [], pagination: { limit: 20, offset: 0, nextOffset: null } },
+  };
+  await act(async () => {
+    root = create(<StipsList />);
+  });
+  await act(async () =>
+    root!.root.findByType("input").props.onChangeText("  Grožđe & paprika  "),
+  );
+  await act(async () =>
+    root!.root
+      .findAllByType("button")
+      .find((b) => b.props.accessibilityLabel === "Pretraži")!
+      .props.onPress(),
+  );
+  await m.options.at(-1).queryFn({ signal: undefined });
+  expect(m.request.mock.calls[0][0]).toBe(
+    "/market/stips/products?limit=20&offset=0&q=Gro%C5%BE%C4%91e%20%26%20paprika",
+  );
+  expect(nativeText()).toContain("Za ovu pretragu trenutno nema rezultata.");
+  await act(async () => root!.unmount());
+  root = undefined;
+  m.query.data = undefined;
+  m.query.error = new ApiError("not_found", 404);
+  await act(async () => {
+    root = create(<StipsList />);
+  });
+  expect(nativeText()).toContain(
+    "Podaci trenutno nisu dostupni. Pokušajte ponovo.",
+  );
+  expect(nativeText()).not.toContain("Traženi sadržaj nije pronađen.");
+  expect(nativeText()).not.toContain(
+    "Za ovu pretragu trenutno nema rezultata.",
+  );
+  await act(async () => root!.unmount());
+  root = undefined;
+  m.query.error = new ApiError("network");
+  await act(async () => {
+    root = create(<StipsList />);
+  });
+  expect(nativeText()).toContain("Nije moguće povezati se");
+});
+it("Home suppresses only its root header while internal stacks keep the compact brand", async () => {
+  const { default: HomeLayout } =
+    await import("../src/app/(tabs)/home/_layout");
+  const { TabStack } = await import("../src/components/ui");
+  await act(async () => {
+    root = create(<HomeLayout />);
+  });
+  expect(root!.root.findByType("stack-screen" as any).props).toMatchObject({
+    name: "index",
+    options: { headerShown: false },
+  });
+  await act(async () => root!.unmount());
+  root = undefined;
+  await act(async () => {
+    root = create(<TabStack />);
+  });
+  const stack = root!.root
+    .findByType(TabStack)
+    .findAll((n) => !!n.props.screenOptions)[0];
+  expect(stack.props.screenOptions.headerShown).not.toBe(false);
+  expect(
+    renderToStaticMarkup(stack.props.screenOptions.headerTitle()),
+  ).toContain("AgroBIM");
+});
+
+it.each([500, 503])(
+  "STIPS list treats server status %s as unavailable rather than empty content",
+  async (status) => {
+    m.query.error = new ApiError("internal_error", status);
+    m.query.data = {
+      data: {
+        items: [],
+        pagination: { limit: 20, offset: 0, nextOffset: null },
+      },
+    };
+    await act(async () => {
+      root = create(<StipsList />);
+    });
+    expect(nativeText()).toContain(
+      "Podaci trenutno nisu dostupni. Pokušajte ponovo.",
+    );
+    expect(nativeText()).not.toContain("Traženi sadržaj nije pronađen.");
+    expect(nativeText()).not.toContain("Trenutno nema dostupnih STIPS cena.");
+    expect(nativeText()).toContain("Pokušajte ponovo");
+  },
+);

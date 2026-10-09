@@ -146,6 +146,12 @@ export function StipsList() {
       {query.error && (
         <ErrorState
           error={query.error}
+          message={
+            query.error instanceof ApiError &&
+            ["network", "timeout"].includes(query.error.code)
+              ? undefined
+              : "Podaci trenutno nisu dostupni. Pokušajte ponovo."
+          }
           retry={refresh}
           retryDisabled={query.isFetching}
         />
@@ -186,10 +192,10 @@ export function StipsList() {
           <Field title="Broj zapisa po mestima" value={p.observationCount} />
         </Card>
       ))}
-      {data?.items.length === 0 && (
+      {!query.error && data?.items.length === 0 && (
         <Body>
           {search
-            ? "Nema proizvoda za ovu pretragu."
+            ? "Za ovu pretragu trenutno nema rezultata."
             : "Trenutno nema dostupnih STIPS cena."}
         </Body>
       )}
