@@ -1,6 +1,13 @@
 import { ExpoConfig } from "expo/config";
+import { requireBuildAuth } from "./src/config/public-auth";
 import identity from "./src/config/identity.json";
 const environment = process.env.EXPO_PUBLIC_APP_ENV ?? "development";
+requireBuildAuth(
+  environment,
+  process.env.EAS_BUILD === "true",
+  process.env.EXPO_PUBLIC_SUPABASE_URL ?? "",
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
+);
 const config: ExpoConfig = {
   name: identity.name,
   slug: identity.slug,
@@ -33,10 +40,10 @@ const config: ExpoConfig = {
   experiments: { typedRoutes: true },
   web: { bundler: "metro", favicon: "./assets/brand/mark.png" },
   extra: {
-  environment,
-  eas: {
-    projectId: "ec6f4932-9c0a-40b9-8750-06028a0ce5f0",
+    environment,
+    eas: {
+      projectId: "ec6f4932-9c0a-40b9-8750-06028a0ce5f0",
+    },
   },
-},
 };
 export default config;

@@ -46,18 +46,7 @@ if (
     new URL(callbackUrl).pathname !== "/mobile/auth/callback")
 )
   throw new Error("HTTPS Auth callback required");
-export function validatePublicAuth(url: string, key: string) {
-  if (!url || !key) return false;
-  if (new URL(url).protocol !== "https:") throw new Error("Invalid Auth host");
-  if (key.startsWith("sb_publishable_")) return true;
-  try {
-    const role = JSON.parse(
-      atob(key.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
-    ).role;
-    if (role === "anon") return true;
-  } catch {}
-  throw new Error("Only public Auth keys are allowed");
-}
+export { validatePublicAuth } from "./public-auth";
 export const config = {
   environment,
   apiBase:

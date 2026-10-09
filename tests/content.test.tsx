@@ -79,6 +79,7 @@ import Home from "../src/screens/home";
 import { CatalogList, CatalogDetail } from "../src/screens/catalog";
 import Information from "../src/screens/information";
 import More from "../src/app/(tabs)/more/index";
+import { useEntitlements } from "../src/subscription/entitlements";
 import Calculator from "../src/app/(tabs)/more/calculator";
 import QA from "../src/app/(tabs)/more/qa";
 import { contentHref, safePublicUrl, label } from "../src/content";
@@ -1160,4 +1161,30 @@ it("term unit switches preserve duration and selecting the current unit changes 
       .find((node) => node.props.accessibilityLabel === "Rok otplate (godine)")!
       .props.value,
   ).toBe("5");
+});
+
+it("entitlement hook reads backend policy only for signed-in identity and uses private cache", async () => {
+  const Probe = () => {
+    useEntitlements();
+    return null;
+  };
+  await act(async () => {
+    root = create(<Probe />);
+  });
+  expect(m.options.at(-1).enabled).toBe(false);
+  m.auth = { status: "signedIn", me: { user: { id } }, message: null };
+  await act(async () => {
+    root!.update(<Probe />);
+  });
+  const q = m.options.at(-1);
+  expect(q.enabled).toBe(true);
+  expect(q.queryKey).toEqual(["private", "entitlements", id]);
+  const signal = new AbortController().signal;
+  m.request.mockResolvedValue({});
+  await q.queryFn({ signal });
+  expect(m.request).toHaveBeenCalledWith(
+    "/me/entitlements",
+    expect.anything(),
+    { private: true, signal },
+  );
 });

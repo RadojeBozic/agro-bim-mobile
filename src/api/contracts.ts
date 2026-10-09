@@ -308,6 +308,42 @@ export const profileSchema = z.object({
   completionState: z.enum(["missing", "partial", "ready"]),
   relevanceReady: z.boolean(),
 });
+
+export const entitlementsSchema = z.object({
+  context: z.object({
+    kind: z.enum([
+      "holding",
+      "legacy_financing",
+      "unlinked",
+      "selection_required",
+    ]),
+    holdingId: idSchema.nullable(),
+  }),
+  configuredPlan: z.enum(["free", "trial", "basic", "plus", "pro"]),
+  effectivePlan: z.enum(["free", "trial", "basic", "plus", "pro"]),
+  status: z.string(),
+  trial: z.object({
+    startsAt: z.string().datetime({ offset: true }).nullable(),
+    endsAt: z.string().datetime({ offset: true }).nullable(),
+    active: z.boolean(),
+    expired: z.boolean(),
+  }),
+  capabilities: z.record(z.boolean()),
+  limits: z.object({
+    productionProcesses: z.discriminatedUnion("mode", [
+      z.object({
+        mode: z.literal("limited"),
+        max: z.number().int().nonnegative(),
+        enforced: z.literal(false),
+      }),
+      z.object({ mode: z.literal("unlimited"), enforced: z.literal(false) }),
+      z.object({ mode: z.literal("unconfigured"), enforced: z.literal(false) }),
+    ]),
+  }),
+  legacyFinancingState: z.string().nullable().optional(),
+  serverNow: z.string().datetime({ offset: true }),
+});
+
 export const accessSchema = z.object({
   financingState: knownEnum([
     "trial_not_started",

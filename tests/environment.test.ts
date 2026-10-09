@@ -66,3 +66,33 @@ it.each([
     }
   },
 );
+
+import { requireBuildAuth } from "../src/config/public-auth";
+it("release cloud builds require both public auth variables, local missing auth remains graceful", () => {
+  expect(requireBuildAuth("development", true, "", "")).toBe(false);
+  expect(requireBuildAuth("preview", false, "", "")).toBe(false);
+  for (const stage of ["preview", "production"]) {
+    expect(() => requireBuildAuth(stage, true, "", "")).toThrow(
+      "EAS auth configuration missing",
+    );
+    expect(() =>
+      requireBuildAuth(stage, true, "https://example.supabase.co", ""),
+    ).toThrow("EAS auth configuration missing");
+    expect(
+      requireBuildAuth(
+        stage,
+        true,
+        "https://example.supabase.co",
+        "sb_publishable_test",
+      ),
+    ).toBe(true);
+    expect(() =>
+      requireBuildAuth(
+        stage,
+        true,
+        "https://example.supabase.co",
+        "sb_secret_private",
+      ),
+    ).toThrow("Only public Auth");
+  }
+});

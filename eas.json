@@ -21,7 +21,8 @@
       "environment": "preview",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "preview",
-        "EXPO_PUBLIC_ENABLE_QA": "false"
+        "EXPO_PUBLIC_ENABLE_QA": "false",
+        "EXPO_PUBLIC_AUTH_CALLBACK_URL": "https://agrobim.digital/mobile/auth/callback"
       },
       "android": {
         "buildType": "apk"
@@ -31,7 +32,8 @@
       "environment": "production",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_ENABLE_QA": "false"
+        "EXPO_PUBLIC_ENABLE_QA": "false",
+        "EXPO_PUBLIC_AUTH_CALLBACK_URL": "https://agrobim.digital/mobile/auth/callback"
       },
       "android": {
         "buildType": "app-bundle"
