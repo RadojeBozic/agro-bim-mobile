@@ -11,6 +11,7 @@ export default function More() {
   return (
     <Screen>
       <Text style={styles.title}>{t("more")}</Text>
+      <Button label="Agro Oglasi" onPress={() => router.push("/more/ads")} />
       <Button
         label={t("account")}
         onPress={() =>
