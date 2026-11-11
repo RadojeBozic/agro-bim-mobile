@@ -54,6 +54,7 @@ vi.mock("../src/auth/provider", () => ({
     mocks.auth.me?.access.capabilities[key] === true,
 }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => mocks.query }));
+vi.mock("../src/components/home-ads", () => ({ HomeAds: () => null }));
 import Home from "../src/screens/home";
 import Farm from "../src/app/(tabs)/farm/index";
 import Account from "../src/app/(tabs)/more/account";

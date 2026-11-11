@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import type { Href } from "expo-router";
 import { ContentRow } from "../components/content";
+import { HomeAds } from "../components/home-ads";
 import { HomeBrand } from "../components/home-brand";
 import { TrustLinks } from "../components/trust-links";
 import type { ContentItem } from "../content";
@@ -169,6 +170,7 @@ export default function Home() {
             )}
           </Card>
         ))}
+        <HomeAds guest={auth.status === "guest"} />
         {data && (
           <Card>
             <Text accessibilityRole="header" style={styles.section}>

@@ -16,7 +16,12 @@ const common = z.object({
 });
 export const adListSchema = z.object({
   total: z.number().int().nonnegative(),
-  items: z.array(common.extend({ coverPhotoId: adId.nullable() })),
+  items: z.array(
+    common.extend({
+      coverPhotoId: adId.nullable(),
+      expiresAt: z.string().optional(),
+    }),
+  ),
 });
 export const adDetailSchema = common.extend({
   description: z.string(),
