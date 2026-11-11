@@ -23,7 +23,7 @@ export function HomeBrand() {
           style={{ width: 52, height: 52, flexShrink: 0 }}
         />
         <View style={{ flex: 1, minWidth: 0, gap: theme.space.xs }}>
-          <Text style={[styles.title, { flexShrink: 1 }]}>Agro BiM</Text>
+          {<Text style={[styles.title, { flexShrink: 1 }]}>Agro BiM</Text>}
           <Text style={[styles.text, { color: theme.color.primary }]}>
             {t("homeBrandDescriptor")}
           </Text>
