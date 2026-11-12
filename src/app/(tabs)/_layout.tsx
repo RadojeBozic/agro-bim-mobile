@@ -35,6 +35,26 @@ export default function TabLayout() {
         <Tabs.Screen
           key={name}
           name={name}
+          listeners={
+            name === "more"
+              ? ({ navigation, route }) => ({
+                  tabPress: (event) => {
+                    const stack = navigation
+                      .getState()
+                      .routes.find(
+                        (tab: { key: string }) => tab.key === route.key,
+                      )?.state;
+                    if (!stack?.key || !stack.index) return;
+                    // A tab switch otherwise focuses the last screen in this stack.
+                    if (navigation.isFocused()) event.preventDefault();
+                    navigation.dispatch({
+                      type: "POP_TO_TOP",
+                      target: stack.key,
+                    });
+                  },
+                })
+              : undefined
+          }
           options={{
             title: t(name),
             tabBarAccessibilityLabel: t(name),
