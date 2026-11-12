@@ -21,10 +21,18 @@ export class ApiClient {
       private?: boolean;
       method?: "GET" | "PATCH" | "PUT" | "POST";
       body?: unknown;
+      rawBody?: { bytes: ArrayBuffer; contentType: "image/jpeg" | "image/png" };
       signal?: AbortSignal;
     } = {},
   ): Promise<{ data: z.output<T>; requestId: string; status: number }> {
     if (!route.startsWith("/") || route.includes("://") || route.includes(".."))
+      throw new ApiError("validation_error");
+    if (
+      options.rawBody &&
+      (options.body !== undefined ||
+        !options.private ||
+        options.method !== "PUT")
+    )
       throw new ApiError("validation_error");
     const generation = this.auth.generation();
     const method = options.method ?? "GET";
@@ -37,7 +45,10 @@ export class ApiClient {
       const abort = () => controller.abort(options.signal?.reason);
       if (options.signal?.aborted) abort();
       options.signal?.addEventListener("abort", abort, { once: true });
-      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      const timer = setTimeout(
+        () => controller.abort(),
+        options.rawBody ? 45000 : this.timeoutMs,
+      );
       let response: Response;
       try {
         const fetcher = this.fetcher;
@@ -48,13 +59,17 @@ export class ApiClient {
           headers: {
             Accept: "application/json",
             ...(token ? { Authorization: "Bearer " + token } : {}),
-            ...(options.body !== undefined
-              ? { "Content-Type": "application/json" }
-              : {}),
+            ...(options.rawBody
+              ? { "Content-Type": options.rawBody.contentType }
+              : options.body !== undefined
+                ? { "Content-Type": "application/json" }
+                : {}),
           },
-          ...(options.body !== undefined
-            ? { body: JSON.stringify(options.body) }
-            : {}),
+          ...(options.rawBody
+            ? { body: options.rawBody.bytes }
+            : options.body !== undefined
+              ? { body: JSON.stringify(options.body) }
+              : {}),
         });
         if (options.private && generation !== this.auth.generation())
           throw new ApiError("unauthenticated", 401);

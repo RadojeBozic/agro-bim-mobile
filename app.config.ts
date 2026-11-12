@@ -29,6 +29,14 @@ const config: ExpoConfig = {
     ["expo-dev-client", { addGeneratedScheme: environment === "development" }],
     "expo-secure-store",
     [
+      "expo-image-picker",
+      {
+        cameraPermission: "Dozvolite fotografisanje za mali oglas.",
+        photosPermission: "Dozvolite izbor fotografija za mali oglas.",
+        microphonePermission: false,
+      },
+    ],
+    [
       "expo-splash-screen",
       {
         image: "./assets/brand/mark.png",

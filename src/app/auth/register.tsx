@@ -1,4 +1,6 @@
+import { useLocalSearchParams } from "expo-router";
 import AuthForm from "../../screens/auth-form";
 export default function Auth() {
-  return <AuthForm mode="register" />;
+  const { flow } = useLocalSearchParams<{ flow?: string }>();
+  return <AuthForm mode="register" returnToAd={flow === "submit-ad"} />;
 }

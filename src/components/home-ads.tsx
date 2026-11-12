@@ -196,10 +196,16 @@ export function HomeAds({ guest }: { guest: boolean }) {
         title="Prikaži sve oglase"
         url="https://agrobim.digital/oglasi"
       />
-      <ExternalLink
-        title="Predajte besplatno mali oglas"
-        url="https://agrobim.digital/oglasi/novi"
+      <Button
+        label="Predajte mali oglas"
+        onPress={() => router.push("/more/ads/new")}
       />
+      {guest && (
+        <ExternalLink
+          title="Predajte besplatno mali oglas"
+          url="https://agrobim.digital/oglasi/novi"
+        />
+      )}
       {guest && (
         <>
           <Body>

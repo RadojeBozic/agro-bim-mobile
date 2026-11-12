@@ -59,7 +59,7 @@ const all = (label: string) => ({ value: "", label });
 const labelFor = (items: Option[], value: string, fallback: string) =>
   items.find((item) => item.value === value)?.label ?? fallback;
 
-function Picker({
+export function Picker({
   title,
   items,
   value,
@@ -229,6 +229,10 @@ export function AdsList() {
   return (
     <Screen refreshing={query.isRefetching} onRefresh={refresh}>
       <Text style={styles.title}>Agro Oglasi</Text>
+      <Button
+        label="Predajte mali oglas"
+        onPress={() => router.push("/more/ads/new")}
+      />
       <Card>
         <TextInput
           style={styles.input}

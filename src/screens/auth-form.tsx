@@ -8,8 +8,10 @@ import { Body, Button, Card, Screen, styles } from "../components/ui";
 import { t, TranslationKey } from "../i18n";
 export default function AuthForm({
   mode,
+  returnToAd = false,
 }: {
   mode: "login" | "register" | "forgot" | "reset";
+  returnToAd?: boolean;
 }) {
   const auth = useAuth();
   const [email, setEmail] = useState(""),
@@ -41,7 +43,8 @@ export default function AuthForm({
         if (result.error) throw result.error;
         await auth.validate();
         setPassword("");
-        router.replace("/home");
+        if (returnToAd) router.dismissTo("/more/ads/new");
+        else router.replace("/home");
       }
       if (mode === "register") {
         const result = await supabase.auth.signUp({
@@ -166,11 +169,29 @@ export default function AuthForm({
           />
         )}
       </Card>
+      {returnToAd && mode === "register" && message === "verificationSent" && (
+        <Button
+          label="Prijavite se i nastavite predaju"
+          onPress={() =>
+            router.replace({
+              pathname: "/auth/login",
+              params: { flow: "submit-ad" },
+            })
+          }
+        />
+      )}
       {mode === "login" && (
         <>
           <Button
             label={t("register")}
-            onPress={() => router.push("/auth/register")}
+            onPress={() =>
+              returnToAd
+                ? router.push({
+                    pathname: "/auth/register",
+                    params: { flow: "submit-ad" },
+                  })
+                : router.push("/auth/register")
+            }
           />
           <Button
             label={t("forgot")}
