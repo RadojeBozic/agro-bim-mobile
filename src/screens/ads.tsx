@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   FlatList,
   Image,
+  Linking,
   Modal,
   Pressable,
+  Share,
   Text,
   TextInput,
   View,
@@ -12,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../runtime";
+import { useAuth } from "../auth/provider";
 import { config } from "../config/environment";
 import { ApiError } from "../core/errors";
 import {
@@ -23,7 +26,7 @@ import {
   Screen,
   styles,
 } from "../components/ui";
-import { Field } from "../components/content";
+import { ExternalLink, Field } from "../components/content";
 import { theme } from "../theme";
 import {
   listingCategories,
@@ -35,6 +38,7 @@ import {
   adDetailSchema,
   adId,
   adListSchema,
+  adPhoneSchema,
   adPhotoUrl,
   adPrice,
   adsListPath,
@@ -328,6 +332,90 @@ export function AdsList() {
   );
 }
 
+function AdContact({
+  id,
+  advertiser,
+  messagingAvailable,
+}: {
+  id: string;
+  advertiser?: string;
+  messagingAvailable?: boolean;
+}) {
+  const auth = useAuth();
+  const [phone, setPhone] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const revealing = useRef(false);
+  const url = "https://agrobim.digital/oglasi/" + id;
+
+  const reveal = async () => {
+    if (revealing.current) return;
+    revealing.current = true;
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await api.request("/ads/" + id + "/phone", adPhoneSchema, {
+        method: "POST",
+        private: auth.status === "signedIn",
+      });
+      setPhone(result.data.phone);
+    } catch {
+      setMessage("Telefon trenutno nije dostupan. Pokušajte ponovo kasnije.");
+    } finally {
+      revealing.current = false;
+      setBusy(false);
+    }
+  };
+
+  const call = async () => {
+    const number = phone?.replace(/[^+0-9]/g, "");
+    if (!number || !/^\+?\d+$/.test(number)) {
+      setMessage("Broj nije u formatu za pozivanje.");
+      return;
+    }
+    setMessage("");
+    try {
+      await Linking.openURL("tel:" + number);
+    } catch {
+      setMessage("Telefonska aplikacija nije dostupna.");
+    }
+  };
+
+  const share = async () => {
+    setMessage("");
+    try {
+      await Share.share({ message: url });
+    } catch {
+      setMessage("Deljenje oglasa trenutno nije dostupno.");
+    }
+  };
+
+  return (
+    <Card>
+      <Text style={styles.section}>Kontakt</Text>
+      {advertiser && <Field title="Oglašivač" value={advertiser} />}
+      {phone ? (
+        <Button label={"Pozovi " + phone} onPress={() => void call()} />
+      ) : (
+        <Button
+          label="Prikaži telefon"
+          disabled={busy}
+          onPress={() => void reveal()}
+        />
+      )}
+      <Button label="Podeli oglas" onPress={() => void share()} />
+      {messagingAvailable && (
+        <ExternalLink title="Pošaljite poruku" url={url} />
+      )}
+      {!!message && (
+        <Text accessibilityRole="alert" style={styles.text}>
+          {message}
+        </Text>
+      )}
+    </Card>
+  );
+}
+
 export function AdsDetail() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const parsed = adId.safeParse(id);
@@ -391,6 +479,12 @@ export function AdsDetail() {
                   <Field key={key} title={key} value={value} />
                 ))}
               </Card>
+              <AdContact
+                key={data.id}
+                id={data.id}
+                advertiser={data.advertiser}
+                messagingAvailable={data.messagingAvailable}
+              />
               {data.photos.map((photoId, index) => (
                 <Photo
                   key={photoId}

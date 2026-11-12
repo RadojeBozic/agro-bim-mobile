@@ -27,7 +27,10 @@ export const adDetailSchema = common.extend({
   description: z.string(),
   attributes: z.record(z.string()),
   photos: z.array(adId),
+  advertiser: z.string().max(120).optional(),
+  messagingAvailable: z.boolean().optional(),
 });
+export const adPhoneSchema = z.object({ phone: z.string().min(1) });
 export type AdSummary = z.infer<typeof common>;
 export const adSorts = {
   newest: "Najnoviji",

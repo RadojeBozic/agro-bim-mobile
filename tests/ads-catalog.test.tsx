@@ -6,10 +6,14 @@ import {
   notifyManager,
 } from "@tanstack/react-query";
 import { afterEach, expect, it, vi } from "vitest";
+import { AdsDetail, AdsList } from "../src/screens/ads";
+import { primaryTabs } from "../src/navigation";
 
 const mock = vi.hoisted(() => ({
   push: vi.fn(),
   fetch: vi.fn(),
+  open: vi.fn(),
+  share: vi.fn(),
   id: "11111111-1111-4111-8111-111111111111",
 }));
 vi.mock("expo-router", () => ({
@@ -41,6 +45,8 @@ vi.mock("react-native-safe-area-context", () => ({
 }));
 vi.mock("react-native", () => ({
   Text: "span",
+  Linking: { openURL: mock.open },
+  Share: { share: mock.share },
   TextInput: "input",
   Image: "img",
   Pressable: "button",
@@ -75,14 +81,15 @@ vi.mock("../src/components/ui", () => ({
   styles: {},
 }));
 vi.mock("../src/components/content", () => ({
+  ExternalLink: ({ title, url }: { title: string; url: string }) => (
+    <button onClick={() => mock.open(url)}>{title}</button>
+  ),
   Field: ({ title, value }: { title: string; value: string }) => (
     <span>
       {title}: {value}
     </span>
   ),
 }));
-import { AdsDetail, AdsList } from "../src/screens/ads";
-import { primaryTabs } from "../src/navigation";
 
 const photoId = "22222222-2222-4222-8222-222222222222";
 const card = {
@@ -142,7 +149,8 @@ it("browses anonymously, filters and paginates, preserves the list under detail,
   let withdrawn = false;
   mock.fetch.mockImplementation(async (url: string, init: RequestInit) => {
     expect(new Headers(init.headers).has("Authorization")).toBe(false);
-    const detail = new URL(url).pathname.endsWith("/" + mock.id);
+    const path = new URL(url).pathname;
+    const detail = path.endsWith("/" + mock.id);
     if (detail && withdrawn)
       return Response.json(
         { error: { code: "not_found", message: "Gone", requestId: mock.id } },
@@ -153,14 +161,18 @@ it("browses anonymously, filters and paginates, preserves the list under detail,
       serverNow: "2026-11-11T10:00:00Z",
       timezone: "Europe/Belgrade",
       requestId: mock.id,
-      data: detail
-        ? {
-            ...card,
-            description: "Opis traktora",
-            photos: [photoId],
-            attributes: { Snaga: "60 kW" },
-          }
-        : { items: [card], total: 25 },
+      data: path.endsWith("/phone")
+        ? { phone: "+381 60 1234567" }
+        : detail
+          ? {
+              ...card,
+              description: "Opis traktora",
+              advertiser: "Javni naziv",
+              messagingAvailable: true,
+              photos: [photoId],
+              attributes: { Snaga: "60 kW" },
+            }
+          : { items: [card], total: 25 },
     });
   });
   const layout = (detail: boolean) => (
@@ -227,6 +239,19 @@ it("browses anonymously, filters and paginates, preserves the list under detail,
   expect(rendered()).toContain("Opis traktora");
   expect(rendered()).toContain("60 kW");
   expect(rendered()).not.toContain("PRIVATE_TEST_VALUE");
+  expect(rendered()).toContain("Javni naziv");
+  expect(rendered()).not.toContain("+381 60 1234567");
+  const publicUrl = "https://agrobim.digital/oglasi/" + mock.id;
+  await click("Podeli oglas");
+  expect(mock.share).toHaveBeenCalledWith({ message: publicUrl });
+  await click("Pošaljite poruku");
+  expect(mock.open).toHaveBeenCalledWith(publicUrl);
+  expect(request().pathname).toBe("/api/v1/ads/" + mock.id);
+  await click("Prikaži telefon");
+  expect(request().pathname).toBe("/api/v1/ads/" + mock.id + "/phone");
+  expect(mock.fetch.mock.lastCall?.[1].method).toBe("POST");
+  await click("Pozovi +381 60 1234567");
+  expect(mock.open).toHaveBeenLastCalledWith("tel:+381601234567");
   await act(async () => root!.update(layout(false)));
   expect(rendered()).toContain("Strana ");
   expect(rendered()).toContain("Sortiranje: Najstariji");
@@ -239,6 +264,7 @@ it("browses anonymously, filters and paginates, preserves the list under detail,
   await settle();
   expect(rendered()).toContain("Oglas više nije javno dostupan.");
   expect(rendered()).not.toContain("Opis traktora");
+  expect(rendered()).not.toContain("Pošaljite poruku");
   expect(primaryTabs).toEqual([
     "home",
     "farm",
