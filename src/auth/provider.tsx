@@ -46,10 +46,15 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
   const validate = useCallback(() => {
     if (!session.token()) return Promise.resolve();
     const generation = session.generation();
+    const accountId = session.session?.user.id;
     if (validation.current?.generation === generation)
       return validation.current.promise;
     const promise = (async () => {
-      setState({ status: "checking", me: null, message: null });
+      setState((previous) => ({
+        status: "checking",
+        me: previous.me?.user.id === accountId ? previous.me : null,
+        message: null,
+      }));
       try {
         const result = await api.request("/me", meSchema, { private: true });
         if (generation === session.generation() && session.token())

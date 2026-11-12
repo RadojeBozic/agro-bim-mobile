@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Image, Text } from "react-native";
+import { Image, Keyboard, Text, View } from "react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { File } from "expo-file-system";
@@ -43,11 +43,17 @@ export default function AdSubmission() {
   return (
     <Screen>
       <Text style={styles.title}>Predajte mali oglas</Text>
-      {auth.status === "checking" ? (
-        <Loading />
-      ) : auth.status === "signedIn" && auth.me ? (
-        <AdFormScreen key={auth.me.user.id} />
-      ) : (
+      {auth.status === "checking" && <Loading />}
+      {auth.me && auth.status !== "guest" && (
+        <View
+          key={auth.me.user.id}
+          style={auth.status === "checking" ? { display: "none" } : undefined}
+        >
+          <AdFormScreen />
+        </View>
+      )}
+      {(auth.status === "guest" ||
+        (auth.status === "signedIn" && !auth.me)) && (
         <Card>
           <Body>
             Za predaju iz aplikacije potreban je besplatan AgroBIM nalog.
@@ -91,7 +97,10 @@ function AdFormScreen() {
   const [uploaded, setUploaded] = useState(0);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState<unknown>(null);
+  const [failure, setFailure] = useState<{
+    cause: unknown;
+    stage: string;
+  } | null>(null);
   const attempt = useRef<Attempt | null>(null);
   const gate = useRef(false);
   const files = useRef<string[]>([]);
@@ -165,8 +174,9 @@ function AdFormScreen() {
     const result = validateAd(form);
     if (result.error) setMessage(result.error);
     else {
+      Keyboard.dismiss();
       setMessage("");
-      setStep((value) => value + 1);
+      setStep(step + 1);
     }
   };
   const send = async () => {
@@ -181,7 +191,7 @@ function AdFormScreen() {
     setBusy(true);
     setLocked(true);
     setMessage("");
-    setError(null);
+    setFailure(null);
     const generation = session.generation();
     const verify = () => {
       if (signal.aborted || generation !== session.generation())
@@ -250,7 +260,15 @@ function AdFormScreen() {
       setSuccess(true);
     } catch (cause) {
       if (!signal.aborted) {
-        setError(cause);
+        const current = attempt.current;
+        setFailure({
+          cause,
+          stage: !current?.listingId
+            ? "Kreiranje nacrta"
+            : current.uploaded < photos.length
+              ? "Slanje fotografija"
+              : "Završna predaja",
+        });
         if (
           !attempt.current?.listingId &&
           cause instanceof ApiError &&
@@ -266,6 +284,9 @@ function AdFormScreen() {
       if (!signal.aborted) setBusy(false);
     }
   };
+
+  const error = failure?.cause;
+  const apiError = error instanceof ApiError ? error : null;
 
   if (success)
     return (
@@ -287,7 +308,7 @@ function AdFormScreen() {
       <Text accessibilityRole="header" style={styles.section}>
         Korak {step + 1} od 3 · {steps[step]}
       </Text>
-      {!!message && (
+      {step > 0 && !!message && (
         <Text accessibilityRole="alert" style={styles.text}>
           {message}
         </Text>
@@ -295,6 +316,11 @@ function AdFormScreen() {
       {step === 0 && (
         <Card>
           <AdFieldsForm form={form} set={set} disabled={locked} />
+          {!!message && (
+            <Text accessibilityRole="alert" style={styles.text}>
+              {message}
+            </Text>
+          )}
           <Button label="Dalje na fotografije" onPress={next} />
         </Card>
       )}
@@ -412,21 +438,37 @@ function AdFormScreen() {
                 </Text>
               )}
               {error != null && (
-                <ErrorState
-                  error={error}
-                  compact
-                  message={
-                    error instanceof ApiError &&
-                    [404, 503].includes(error.status ?? 0)
-                      ? "Mobilna predaja trenutno nije dostupna."
-                      : error instanceof ApiError && error.status === 409
-                        ? "Server nije prihvatio predaju. Proverite limit oglasa ili ponovite slanje priloga."
-                        : error instanceof ApiError &&
-                            ["network", "timeout"].includes(error.code)
-                          ? undefined
-                          : "Predaja nije potvrđena. Podaci nisu obrisani."
-                  }
-                />
+                <>
+                  <ErrorState
+                    error={error}
+                    compact
+                    message={
+                      error instanceof ApiError &&
+                      [404, 503].includes(error.status ?? 0)
+                        ? "Mobilna predaja trenutno nije dostupna."
+                        : error instanceof ApiError && error.status === 409
+                          ? "Server nije prihvatio predaju. Proverite limit oglasa ili ponovite slanje priloga."
+                          : error instanceof ApiError &&
+                              ["network", "timeout"].includes(error.code)
+                            ? undefined
+                            : "Predaja nije potvrđena. Podaci nisu obrisani."
+                    }
+                  />
+                  {apiError && (
+                    <Body>
+                      {[
+                        failure?.stage,
+                        apiError.status ? "HTTP " + apiError.status : null,
+                        apiError.code,
+                        apiError.requestId
+                          ? "ID zahteva " + apiError.requestId
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Body>
+                  )}
+                </>
               )}
               <Button
                 label={
