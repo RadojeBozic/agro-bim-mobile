@@ -65,12 +65,14 @@ export function Picker({
   value,
   onSelect,
   searchable = false,
+  disabled = false,
 }: {
   title: string;
   items: Option[];
   value: string;
   onSelect: (value: string) => void;
   searchable?: boolean;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -80,6 +82,7 @@ export function Picker({
   return (
     <>
       <Button
+        disabled={disabled}
         label={title + ": " + labelFor(items, value, "Sve")}
         onPress={() => {
           setSearch("");

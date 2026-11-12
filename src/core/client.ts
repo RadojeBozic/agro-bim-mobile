@@ -23,6 +23,7 @@ export class ApiClient {
       body?: unknown;
       rawBody?: { bytes: ArrayBuffer; contentType: "image/jpeg" | "image/png" };
       signal?: AbortSignal;
+      responseImage?: boolean;
     } = {},
   ): Promise<{ data: z.output<T>; requestId: string; status: number }> {
     if (!route.startsWith("/") || route.includes("://") || route.includes(".."))
@@ -32,6 +33,13 @@ export class ApiClient {
       (options.body !== undefined ||
         !options.private ||
         options.method !== "PUT")
+    )
+      throw new ApiError("validation_error");
+    if (
+      options.responseImage &&
+      (!options.private ||
+        (options.method && options.method !== "GET") ||
+        options.body !== undefined)
     )
       throw new ApiError("validation_error");
     const generation = this.auth.generation();
@@ -57,7 +65,9 @@ export class ApiClient {
           redirect: "error",
           signal: controller.signal,
           headers: {
-            Accept: "application/json",
+            Accept: options.responseImage
+              ? "image/jpeg, image/png, application/json"
+              : "application/json",
             ...(token ? { Authorization: "Bearer " + token } : {}),
             ...(options.rawBody
               ? { "Content-Type": options.rawBody.contentType }
@@ -73,6 +83,41 @@ export class ApiClient {
         });
         if (options.private && generation !== this.auth.generation())
           throw new ApiError("unauthenticated", 401);
+        if (response.ok && options.responseImage) {
+          const mime = response.headers.get("Content-Type");
+          const requestId = z
+            .string()
+            .uuid()
+            .safeParse(response.headers.get("X-Request-Id"));
+          const max = 10 * 1024 * 1024;
+          if (
+            (mime !== "image/jpeg" && mime !== "image/png") ||
+            !requestId.success ||
+            Number(response.headers.get("Content-Length")) > max
+          )
+            throw new ApiError("invalid_response", response.status);
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          if (generation !== this.auth.generation())
+            throw new ApiError("unauthenticated", 401);
+          if (!bytes.length || bytes.length > max)
+            throw new ApiError("invalid_response", response.status);
+          const chunks: string[] = [];
+          for (let i = 0; i < bytes.length; i += 8190) {
+            chunks.push(
+              btoa(String.fromCharCode(...bytes.subarray(i, i + 8190))),
+            );
+          }
+          const parsed = schema.safeParse(
+            "data:" + mime + ";base64," + chunks.join(""),
+          );
+          if (!parsed.success)
+            throw new ApiError("invalid_response", response.status);
+          return {
+            data: parsed.data,
+            requestId: requestId.data,
+            status: response.status,
+          };
+        }
         const raw: unknown = await response.json().catch((e) => {
           if (controller.signal.aborted) throw e;
           return null;

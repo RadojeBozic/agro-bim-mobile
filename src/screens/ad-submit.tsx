@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Image, Text, TextInput, type TextInputProps } from "react-native";
+import { Image, Text } from "react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { File } from "expo-file-system";
@@ -17,13 +17,15 @@ import {
   styles,
 } from "../components/ui";
 import { ApiError } from "../core/errors";
-import { listingCategories, listingTypes } from "../api/ads-catalog";
-import municipalities from "../api/ads-municipalities.json";
-import { Picker } from "./ads";
+import { listingTypes } from "../api/ads-catalog";
+import {
+  AdFieldsForm,
+  categoryOptions,
+  townOptions,
+} from "../components/ad-fields";
 import { discardPreparedPhoto, prepareAdPhoto } from "../ads/photos";
 import {
   adReceipt,
-  allowedAdTypes,
   initialAdForm,
   maxPhotoBytes,
   photoReceipt,
@@ -34,14 +36,6 @@ import {
   type Attempt,
 } from "../ads/submission";
 
-const categoryOptions = Object.entries(listingCategories).map(
-  ([value, label]) => ({ value, label }),
-);
-const townOptions = municipalities.items.map(({ code, name }) => ({
-  value: code,
-  label: name,
-}));
-const currencies = ["RSD", "EUR"].map((value) => ({ value, label: value }));
 const steps = ["Podaci o oglasu", "Fotografije", "Pregled i predaja"] as const;
 
 export default function AdSubmission() {
@@ -119,23 +113,6 @@ function AdFormScreen() {
       ...(key === "category" ? { type: "" } : {}),
     }));
   };
-  const input = (
-    label: string,
-    key: keyof AdForm,
-    options: TextInputProps = {},
-  ) => (
-    <React.Fragment key={key}>
-      <Body>{label}</Body>
-      <TextInput
-        {...options}
-        accessibilityLabel={label}
-        style={styles.input}
-        value={form[key]}
-        editable={!locked}
-        onChangeText={(value) => set(key, value)}
-      />
-    </React.Fragment>
-  );
   const updatePhotos = (next: string[]) => {
     files.current = next;
     setPhotos(next);
@@ -317,52 +294,7 @@ function AdFormScreen() {
       )}
       {step === 0 && (
         <Card>
-          <Picker
-            title="Rubrika"
-            value={form.category}
-            items={categoryOptions}
-            onSelect={(value) => set("category", value)}
-          />
-          <Picker
-            title="Vrsta oglasa"
-            value={form.type}
-            items={allowedAdTypes(form.category).map((value) => ({
-              value,
-              label: listingTypes[value],
-            }))}
-            onSelect={(value) => set("type", value)}
-          />
-          {input("Potkategorija (opciono)", "subcategory", { maxLength: 100 })}
-          {input("Naslov (do 80 znakova)", "title")}
-          {input("Opis (do 200 znakova)", "description", { multiline: true })}
-          <Picker
-            title="Opština"
-            value={form.municipalityCode}
-            items={townOptions}
-            searchable
-            onSelect={(value) => set("municipalityCode", value)}
-          />
-          {input("Naselje (opciono)", "settlement", { maxLength: 200 })}
-          {input("Kontakt telefon", "phone", {
-            keyboardType: "phone-pad",
-            maxLength: 60,
-          })}
-          {input("Cena (opciono)", "amount", { keyboardType: "decimal-pad" })}
-          {!!form.amount.trim() && (
-            <Picker
-              title="Valuta"
-              value={form.currency}
-              items={currencies}
-              onSelect={(value) => set("currency", value)}
-            />
-          )}
-          {input("Jedinica obračuna (opciono)", "priceBasis", {
-            maxLength: 100,
-          })}
-          {input("Dodatne karakteristike (opciono)", "details", {
-            maxLength: 500,
-            multiline: true,
-          })}
+          <AdFieldsForm form={form} set={set} disabled={locked} />
           <Button label="Dalje na fotografije" onPress={next} />
         </Card>
       )}
