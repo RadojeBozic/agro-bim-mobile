@@ -755,7 +755,12 @@ it("failed external legal opening shows the existing retry state and retries the
     .findAllByType("button")
     .find((button) => button.props.accessibilityLabel === "Brisanje naloga")!;
   await act(async () => deletionLink.props.onPress());
-  expect(JSON.stringify(root!.toJSON())).toContain("Nije moguće povezati se");
+  expect(
+    root!.root
+      .findAllByType("span")
+      .flatMap((node) => node.props.children)
+      .join(""),
+  ).toContain("Nije moguće povezati se");
   const retry = root!.root
     .findAllByType("button")
     .find((button) => button.props.accessibilityLabel === "Pokušajte ponovo")!;
