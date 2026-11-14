@@ -27,6 +27,24 @@ const sr = {
   more: "Više",
   current: "Aktuelno",
   deadlines: "Rokovi",
+  signedInHome: "Prijavljeni ste na AgroBIM",
+  freeRegistration: "Besplatna registracija",
+  registerHome:
+    "Registrujte se besplatno i koristite dodatne mogućnosti AgroBIM-a.",
+  myAccount: "Moj nalog",
+  myAds: "Moji oglasi",
+  noDeadlines: "Trenutno nema dostupnih rokova.",
+  noFutureDeadlines:
+    "Objavljeni programi trenutno nemaju budući rok za prijavu.",
+  noRelevantDeadlines: "Trenutno nema rokova prema vašem profilu.",
+  deadlinesUnavailable:
+    "Rokovi trenutno nisu dostupni zbog tehničkog problema.",
+  deadlineDate: "Rok za prijavu",
+  production: "Proizvodnja",
+  productionGuest:
+    "Registrujte se besplatno za pristup evidenciji proizvodnih procesa.",
+  productionWeb:
+    "Proizvodnja se otvara na sajtu, gde može biti potrebna prijava. Ako nemate gazdinstvo, sajt će vas uputiti da ga dodate.",
   financing: "Finansiranje",
   market: "Tržište",
   profile: "Profil gazdinstva",
@@ -142,6 +160,23 @@ const en: Record<TranslationKey, string> = {
   more: "More",
   current: "Current",
   deadlines: "Deadlines",
+  signedInHome: "You are signed in to AgroBIM",
+  freeRegistration: "Register for free",
+  registerHome: "Register for free to use more AgroBIM features.",
+  myAccount: "My account",
+  myAds: "My ads",
+  noDeadlines: "There are no deadlines available right now.",
+  noFutureDeadlines:
+    "Published programmes currently have no upcoming application deadline.",
+  noRelevantDeadlines:
+    "There are no deadlines matching your profile right now.",
+  deadlinesUnavailable:
+    "Deadlines are temporarily unavailable due to a technical problem.",
+  deadlineDate: "Application deadline",
+  production: "Production",
+  productionGuest: "Register for free to access production records.",
+  productionWeb:
+    "Production opens on the website, where you may need to sign in. The site will guide you through adding a farm if needed.",
   financing: "Financing",
   market: "Market",
   profile: "Farm profile",

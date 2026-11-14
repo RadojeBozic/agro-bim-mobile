@@ -32,13 +32,26 @@ export default function More() {
         onPress={() => router.push("/more/calculator")}
       />
       <Card>
-        <ExternalLink
-          title="Proizvodnja i parcele · web"
-          url="https://agrobim.digital/proizvodnja"
-        />
-        <Body>
-          Proizvodnja se otvara na sajtu i može zahtevati prijavu na sajtu.
-        </Body>
+        {auth.status === "signedIn" ? (
+          <>
+            <ExternalLink
+              title={t("production")}
+              url="https://agrobim.digital/proizvodnja"
+            />
+            <Body>{t("productionWeb")}</Body>
+          </>
+        ) : (
+          <>
+            <Text style={styles.section}>{t("production")}</Text>
+            <Body>{t("productionGuest")}</Body>
+            {auth.status === "guest" && (
+              <Button
+                label={t("freeRegistration")}
+                onPress={() => router.push("/auth/register")}
+              />
+            )}
+          </>
+        )}
       </Card>
       <TrustLinks showAppInfo />
     </Screen>

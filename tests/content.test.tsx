@@ -10,6 +10,8 @@ const m = vi.hoisted(() => ({
   openURL: vi.fn(async () => {}),
   auth: { status: "guest", me: null, message: null } as any,
   qa: false,
+  foreground: (_state: string) => {},
+  deadlines: {} as any,
   query: {
     isPending: false,
     isRefetching: false,
@@ -21,6 +23,12 @@ const m = vi.hoisted(() => ({
   } as any,
 }));
 vi.mock("react-native", () => ({
+  AppState: {
+    addEventListener: (_event: string, listener: (state: string) => void) => {
+      m.foreground = listener;
+      return { remove() {} };
+    },
+  },
   Text: "span",
   View: "div",
   Pressable: "button",
@@ -68,7 +76,9 @@ vi.mock("../src/auth/provider", () => ({
 vi.mock("@tanstack/react-query", () => ({
   useQuery: (options: any) => {
     m.options.push(options);
-    return m.query;
+    return options.queryKey?.[1] === "home-deadline-programmes"
+      ? m.deadlines
+      : m.query;
   },
 }));
 import { TrustLinks } from "../src/components/trust-links";
@@ -548,7 +558,9 @@ it("authenticated Home retains farm summary, deadlines and personalized targets"
         },
         deadlines: {
           status: "ok",
-          items: [{ key: "deadline", title: "Važan rok" }],
+          items: [
+            { key: "deadline", title: "Važan rok", validUntil: "2099-03-04" },
+          ],
         },
         subsidies: section,
         financing: section,
@@ -562,7 +574,13 @@ it("authenticated Home retains farm summary, deadlines and personalized targets"
   expect(html).toContain("Profil je spreman");
   expect(html).toContain("Za vas");
   expect(html).toContain("Važan rok");
-  expect(m.options.at(-1).queryKey).toEqual(["private", id, "today"]);
+  expect(
+    m.options.some(
+      (option) =>
+        JSON.stringify(option.queryKey) ===
+        JSON.stringify(["private", id, "today"]),
+    ),
+  ).toBe(true);
 });
 it("trust links show only configured official destinations and reject placeholders", () => {
   expect(
@@ -1191,5 +1209,100 @@ it("entitlement hook reads backend policy only for signed-in identity and uses p
     "/me/entitlements",
     expect.anything(),
     { private: true, signal },
+  );
+});
+
+it("Home UX updates the local date on foreground and reflects session changes", async () => {
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(new Date(2026, 10, 14, 23, 59));
+    await act(async () => {
+      root = create(<Home />);
+    });
+    const text = (value: string) =>
+      root!.root
+        .findAllByType("span")
+        .some((node) => node.props.children === value);
+    expect(text("Subota, 14. novembar 2026.")).toBe(true);
+    const registration = root!.root
+      .findAllByType("button")
+      .find(
+        (node) => node.props.accessibilityLabel === "Besplatna registracija",
+      );
+    expect(registration).toBeDefined();
+    registration!.props.onPress();
+    expect(m.push).toHaveBeenCalledWith("/auth/register");
+    vi.setSystemTime(new Date(2026, 10, 15, 0, 1));
+    await act(async () => m.foreground("active"));
+    expect(text("Nedelja, 15. novembar 2026.")).toBe(true);
+    m.auth = {
+      status: "signedIn",
+      me: { user: { id, displayName: "Ana" }, farm: {} },
+    };
+    await act(async () => {
+      root!.update(<Home />);
+    });
+    expect(
+      root!.root
+        .findAllByType("span")
+        .flatMap((node) => node.props.children)
+        .join(""),
+    ).toContain("Prijavljeni ste na AgroBIM");
+    expect(
+      root!.root
+        .findAllByType("span")
+        .flatMap((node) => node.props.children)
+        .join(""),
+    ).toContain("Ana");
+    m.auth = { status: "guest", me: null };
+    await act(async () => {
+      root!.update(<Home />);
+    });
+    expect(
+      root!.root
+        .findAllByType("span")
+        .flatMap((node) => node.props.children)
+        .join(""),
+    ).toContain("Besplatna registracija");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("Home UX distinguishes public deadlines, empty results and network errors", () => {
+  try {
+    m.deadlines = { isPending: true };
+    expect(renderToStaticMarkup(<Home />)).toContain("Učitavanje");
+    m.deadlines = { data: [] };
+    expect(renderToStaticMarkup(<Home />)).toContain(
+      "Trenutno nema dostupnih rokova",
+    );
+    m.deadlines = {
+      data: [{ status: "open", title: "Javni konkurs", deadline: null }],
+    };
+    expect(renderToStaticMarkup(<Home />)).toContain("nemaju budući rok");
+    m.deadlines.data[0].deadline = "2099-03-04";
+    m.deadlines.data[0].target = { type: "programme", id };
+    expect(renderToStaticMarkup(<Home />)).toContain("Javni konkurs");
+    m.deadlines.isError = true;
+    expect(renderToStaticMarkup(<Home />)).toContain(
+      "Rokovi trenutno nisu dostupni",
+    );
+    expect(renderToStaticMarkup(<Home />)).not.toContain("Javni konkurs");
+  } finally {
+    m.deadlines = {};
+  }
+});
+
+it("More UX offers registration to guests and the existing production web route to members", () => {
+  const guest = renderToStaticMarkup(<More />);
+  expect(guest).toContain("Proizvodnja");
+  expect(guest).toContain("Besplatna registracija");
+  m.auth = { status: "signedIn" };
+  expect(renderToStaticMarkup(<More />)).toContain(
+    'accessibilityRole="link" accessibilityLabel="Proizvodnja"',
+  );
+  expect(renderToStaticMarkup(<More />)).not.toContain(
+    "Besplatna registracija",
   );
 });

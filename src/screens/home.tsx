@@ -1,7 +1,8 @@
-import React from "react";
-import { Pressable, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { AppState, Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import type { Href } from "expo-router";
+import { HomeDeadlines } from "./home-deadlines";
 import { ContentRow } from "../components/content";
 import { HomeAds } from "../components/home-ads";
 import { HomeBrand } from "../components/home-brand";
@@ -10,6 +11,7 @@ import type { ContentItem } from "../content";
 import { useAuth } from "../auth/provider";
 import {
   Body,
+  Button,
   Card,
   Empty,
   ErrorState,
@@ -52,6 +54,20 @@ const primaryActions: {
 export default function Home() {
   const auth = useAuth();
   const signed = auth.status === "signedIn";
+  const displayName = auth.me?.user?.displayName?.trim();
+  const [today, setToday] = useState(() => new Date());
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") setToday(new Date());
+    });
+    return () => subscription.remove();
+  }, []);
+  const localDate = today.toLocaleDateString("sr-Latn-RS", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   const { query, refresh } = useHomeQuery(signed, auth.me?.user.id);
   const data = query.data?.data;
   const sections: {
@@ -75,7 +91,6 @@ export default function Home() {
     sections.push(
       { label: "current", ...data.sections.important },
       { label: "programmes", href: "/programmes", ...data.sections.subsidies },
-      { label: "deadlines", ...data.sections.deadlines },
       {
         label: "financing",
         href: "/more/financing",
@@ -88,14 +103,39 @@ export default function Home() {
     <Screen
       topInset
       refreshing={query.isFetching}
-      onRefresh={() => void refresh()}
+      onRefresh={() => {
+        setToday(new Date());
+        void refresh();
+      }}
     >
       <View style={{ gap: theme.space.md, paddingVertical: theme.space.sm }}>
         <HomeBrand />
         <Text accessibilityRole="header" style={styles.title}>
           {t("welcome")}
         </Text>
+        <Text style={styles.muted}>
+          {localDate.charAt(0).toLocaleUpperCase("sr-Latn-RS") +
+            localDate.slice(1)}
+        </Text>
       </View>
+      {signed ? (
+        <Card>
+          <Body>
+            {t("signedInHome")}
+            {displayName ? " · " + displayName : ""}
+          </Body>
+          <TextLink label={t("myAccount")} href="/more/account" />
+          <TextLink label={t("myAds")} href="/more/my-ads" />
+        </Card>
+      ) : auth.status === "guest" ? (
+        <Card>
+          <Body>{t("registerHome")}</Body>
+          <Button
+            label={t("freeRegistration")}
+            onPress={() => router.push("/auth/register")}
+          />
+        </Card>
+      ) : null}
       <View style={{ gap: theme.space.sm }}>
         <Text accessibilityRole="header" style={styles.muted}>
           {t("explore")}
@@ -178,6 +218,18 @@ export default function Home() {
             )}
           </Card>
         ))}
+        {(signed || auth.status === "guest") && (
+          <HomeDeadlines
+            signed={signed}
+            today={today}
+            pending={query.isPending}
+            error={query.error}
+            personalized={
+              data && "profile" in data ? data.sections.deadlines : undefined
+            }
+            refreshHome={() => void refresh()}
+          />
+        )}
         <HomeAds guest={auth.status === "guest"} />
         {data && (
           <Card>
