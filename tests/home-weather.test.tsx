@@ -82,6 +82,7 @@ it("loads public weather, labels stale data and remembers the selected municipal
       .findAllByType("button")
       .find(
         (node) =>
+          node.props.accessibilityLabel === label ||
           [node.props.children].flat().join("").trim() === label ||
           node
             .findAllByType("span")
@@ -143,7 +144,12 @@ it("loads public weather, labels stale data and remembers the selected municipal
     );
     await settle();
     expect(output()).toContain("Prikazani su stariji podaci.");
-    expect(output().match(/Potpuno oblačno/g)).toHaveLength(4);
+    expect(output()).toContain("Potpuno oblačno");
+    expect(
+      root!.root.findAllByProps({ accessibilityLabel: "Potpuno oblačno" }),
+    ).toHaveLength(3);
+    expect(output().match(/☁️/g)).toHaveLength(4);
+    expect(output().match(/61/g)).toHaveLength(3);
     expect(root!.root.findByType("a").props.href).toBe(
       "https://www.weatherapi.com/",
     );
