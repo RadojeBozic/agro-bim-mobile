@@ -5,6 +5,7 @@ import type { Href } from "expo-router";
 import { HomeDeadlines } from "./home-deadlines";
 import { ContentRow } from "../components/content";
 import { HomeAds } from "../components/home-ads";
+import { HomeWeather } from "../components/home-weather";
 import { HomeBrand } from "../components/home-brand";
 import { TrustLinks } from "../components/trust-links";
 import type { ContentItem } from "../content";
@@ -167,6 +168,7 @@ export default function Home() {
         </Card>
       )}
       <View style={{ gap: theme.space.md, marginTop: theme.space.sm }}>
+        <HomeWeather />
         {query.isPending && <Loading />}
         {query.error && (
           <ErrorState

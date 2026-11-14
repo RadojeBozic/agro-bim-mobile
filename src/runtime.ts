@@ -27,7 +27,7 @@ export const onStorageFailure = (listener: () => void) => {
   };
 };
 const memory = new Map<string, string>(); // Web QA only: no persistent session secrets in browser storage.
-const storage = config.native
+export const storage = config.native
   ? secureAdapter(
       {
         getItemAsync: (key) => SecureStore.getItemAsync(key),
