@@ -47,6 +47,9 @@ const sr = {
   logout: "Odjava",
   loading: "Učitavanje…",
   empty: "Još nema dostupnih informacija.",
+  cenotekaEmpty: "Trenutno nema dostupnih ponuda.",
+  cenotekaUnavailable:
+    "Cenoteka trenutno nije dostupna zbog tehničkog problema.",
   offline: "Trenutno nema internet veze.",
   retry: "Pokušajte ponovo",
   refreshed: "Poslednje osvežavanje",
@@ -159,6 +162,9 @@ const en: Record<TranslationKey, string> = {
   logout: "Sign out",
   loading: "Loading…",
   empty: "No information is available yet.",
+  cenotekaEmpty: "No offers are currently available.",
+  cenotekaUnavailable:
+    "Cenoteka is temporarily unavailable due to a technical problem.",
   offline: "You are currently offline.",
   retry: "Try again",
   refreshed: "Last refreshed",

@@ -75,6 +75,7 @@ import { TrustLinks } from "../src/components/trust-links";
 import { availableTrustLinks, trustDestinations } from "../src/config/trust";
 import Account from "../src/app/(tabs)/more/account";
 import Farm from "../src/app/(tabs)/farm/index";
+vi.mock("../src/components/home-ads", () => ({ HomeAds: () => null }));
 import Home from "../src/screens/home";
 import { CatalogList, CatalogDetail } from "../src/screens/catalog";
 import Information from "../src/screens/information";
@@ -212,8 +213,10 @@ it("404 detail and transient request failures have readable Serbian states", () 
     "Traženi sadržaj nije pronađen",
   );
   m.query.error = new ApiError("network");
+  m.query.data = { data: { items: [], pagination: { nextOffset: null } } };
   const html = renderToStaticMarkup(<CatalogList kind="cenoteka" />);
-  expect(html).toContain("Proverite internet vezu");
+  expect(html).toContain("Cenoteka trenutno nije dostupna");
+  expect(html).not.toContain("Trenutno nema dostupnih ponuda");
   expect(html).toContain("Pokušajte ponovo");
 });
 it.each(["programmes", "financing", "cenoteka"] as const)(
@@ -221,7 +224,9 @@ it.each(["programmes", "financing", "cenoteka"] as const)(
   (kind) => {
     m.query.data = { data: { items: [], pagination: { nextOffset: null } } };
     expect(renderToStaticMarkup(<CatalogList kind={kind} />)).toContain(
-      "Još nema dostupnih informacija",
+      kind === "cenoteka"
+        ? "Trenutno nema dostupnih ponuda"
+        : "Još nema dostupnih informacija",
     );
     m.query.data = undefined;
     m.query.isPending = true;

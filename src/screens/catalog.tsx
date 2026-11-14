@@ -65,7 +65,8 @@ export function CatalogList({ kind }: { kind: Kind }) {
         { signal },
       ),
   });
-  const data = query.data?.data;
+  const isCenoteka = kind === "cenoteka";
+  const data = isCenoteka && query.error ? undefined : query.data?.data;
   const refresh = () => void query.refetch({ cancelRefetch: false });
   return (
     <Screen refreshing={query.isRefetching} onRefresh={refresh}>
@@ -80,6 +81,7 @@ export function CatalogList({ kind }: { kind: Kind }) {
       {query.error && (
         <ErrorState
           error={query.error}
+          message={isCenoteka ? t("cenotekaUnavailable") : undefined}
           retry={refresh}
           retryDisabled={query.isFetching}
         />
@@ -113,7 +115,8 @@ export function CatalogList({ kind }: { kind: Kind }) {
           )}
         </Card>
       ))}
-      {data?.items.length === 0 && <Empty />}
+      {data?.items.length === 0 &&
+        (isCenoteka ? <Body>{t("cenotekaEmpty")}</Body> : <Empty />)}
       {offset > 0 && (
         <Button
           label="Prethodna strana"

@@ -142,9 +142,15 @@ export default function Home() {
             <Text accessibilityRole="header" style={styles.section}>
               {t(section.label)}
             </Text>
-            {section.status === "unavailable" ? (
+            {section.status === "unavailable" ||
+            (section.label === "cenoteka" && query.error) ? (
               <ErrorState
                 error={query.error}
+                message={
+                  section.label === "cenoteka"
+                    ? t("cenotekaUnavailable")
+                    : undefined
+                }
                 compact
                 retryDisabled={query.isFetching}
                 retry={() => void refresh()}
@@ -159,6 +165,8 @@ export default function Home() {
                     signed={signed}
                   />
                 ))
+            ) : section.label === "cenoteka" ? (
+              <Body>{t("cenotekaEmpty")}</Body>
             ) : (
               <Empty />
             )}
