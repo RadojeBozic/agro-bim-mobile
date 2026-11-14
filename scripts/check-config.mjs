@@ -25,7 +25,7 @@ for (const stage of ["development", "preview", "production"]) {
   );
   assert.equal(cfg.name, identity.name);
   assert.equal(cfg.android.package, identity.package);
-  assert.equal(cfg.android.versionCode, 1);
+  assert.equal(cfg.android.versionCode, identity.versionCode);
   assert.equal(cfg.version, "1.0.0");
   assert.equal(cfg.extra.environment, stage);
   assert.equal(cfg.scheme, stage === "development" ? "agrobim-dev" : undefined);
@@ -39,6 +39,9 @@ for (const stage of ["development", "preview", "production"]) {
 }
 const eas = JSON.parse(fs.readFileSync("eas.json", "utf8"));
 assert.equal(eas.build.development.developmentClient, true);
+assert.equal(eas.build.preview.developmentClient, false);
+assert.equal(eas.build.preview.distribution, "internal");
+assert.equal(eas.build.preview.env.EXPO_PUBLIC_API_BASE_URL, "https://agrobim.digital");
 assert.equal(eas.build.preview.android.buildType, "apk");
 assert.equal(eas.build.production.android.buildType, "app-bundle");
 console.log("EAS profiles valid.");

@@ -17,10 +17,12 @@
       }
     },
     "preview": {
+      "developmentClient": false,
       "distribution": "internal",
       "environment": "preview",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_API_BASE_URL": "https://agrobim.digital",
         "EXPO_PUBLIC_ENABLE_QA": "false",
         "EXPO_PUBLIC_AUTH_CALLBACK_URL": "https://agrobim.digital/mobile/auth/callback"
       },
