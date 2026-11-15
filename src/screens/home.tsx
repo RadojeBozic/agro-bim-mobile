@@ -27,6 +27,7 @@ import {
 } from "../components/ui";
 import { t, TranslationKey } from "../i18n";
 import { theme } from "../theme";
+import { homeOfferPrices } from "./home-offer-prices";
 import { useHomeQuery } from "./use-home-query";
 
 const primaryActions: {
@@ -243,9 +244,21 @@ export default function Home() {
           ) : !publicCenoteka ? (
             <Loading />
           ) : publicCenoteka.items.length ? (
-            publicCenoteka.items
-              .slice(0, 3)
-              .map((offer) => <ContentRow key={offer.id} item={offer} />)
+            publicCenoteka.items.slice(0, 3).map((offer) => {
+              const { unitPrice, packagePrice } = homeOfferPrices(offer);
+              return (
+                <View key={offer.id}>
+                  <ContentRow item={offer} />
+                  {unitPrice && <Text style={styles.text}>{unitPrice}</Text>}
+                  {packagePrice && (
+                    <Text style={styles.muted}>{packagePrice}</Text>
+                  )}
+                  {offer.supplier.name && (
+                    <Text style={styles.muted}>{offer.supplier.name}</Text>
+                  )}
+                </View>
+              );
+            })
           ) : (
             <Body>{t("cenotekaEmpty")}</Body>
           )}
