@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { AppState, Pressable, Text, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { guestTodaySchema } from "../api/contracts";
+import { api } from "../runtime";
 import { router } from "expo-router";
 import type { Href } from "expo-router";
 import { HomeDeadlines } from "./home-deadlines";
@@ -71,6 +74,20 @@ export default function Home() {
   });
   const { query, refresh } = useHomeQuery(signed, auth.me?.user.id);
   const data = query.data?.data;
+  // Use the same public cache and server selection as the guest homepage.
+  const publicToday = useQuery({
+    queryKey: ["public", "today"],
+    enabled: signed,
+    queryFn: ({ signal }) =>
+      api.request("/today", guestTodaySchema, { signal }),
+  });
+  const publicCenoteka = signed
+    ? publicToday.data?.data.sections.cenoteka
+    : data && "audience" in data
+      ? data.sections.cenoteka
+      : undefined;
+  const cenotekaQuery = signed ? publicToday : query;
+  const refreshCenoteka = () => cenotekaQuery.refetch({ cancelRefetch: false });
   const sections: {
     label: TranslationKey;
     items: ContentItem[];
@@ -86,7 +103,6 @@ export default function Home() {
         href: "/more/financing",
         ...data.sections.financing,
       },
-      { label: "cenoteka", href: "/cenoteka", ...data.sections.cenoteka },
     );
   } else if (data && "profile" in data) {
     sections.push(
@@ -97,16 +113,16 @@ export default function Home() {
         href: "/more/financing",
         ...data.sections.financing,
       },
-      { label: "cenoteka", href: "/cenoteka", ...data.sections.cenoteka },
     );
   }
   return (
     <Screen
       topInset
-      refreshing={query.isFetching}
+      refreshing={query.isFetching || (signed && publicToday.isFetching)}
       onRefresh={() => {
         setToday(new Date());
         void refresh();
+        if (signed) void refreshCenoteka();
       }}
     >
       <View style={{ gap: theme.space.md, paddingVertical: theme.space.sm }}>
@@ -184,15 +200,9 @@ export default function Home() {
             <Text accessibilityRole="header" style={styles.section}>
               {t(section.label)}
             </Text>
-            {section.status === "unavailable" ||
-            (section.label === "cenoteka" && query.error) ? (
+            {section.status === "unavailable" ? (
               <ErrorState
                 error={query.error}
-                message={
-                  section.label === "cenoteka"
-                    ? t("cenotekaUnavailable")
-                    : undefined
-                }
                 compact
                 retryDisabled={query.isFetching}
                 retry={() => void refresh()}
@@ -207,27 +217,40 @@ export default function Home() {
                     signed={signed}
                   />
                 ))
-            ) : section.label === "cenoteka" ? (
-              <Body>
-                {signed
-                  ? "Trenutno nema novih ponuda relevantnih za vaše gazdinstvo."
-                  : t("cenotekaEmpty")}
-              </Body>
             ) : (
               <Empty />
             )}
             {section.href && (
               <TextLink
-                label={
-                  section.label === "cenoteka" && signed
-                    ? "Pregled javne Cenoteke"
-                    : t("browseAll") + " · " + t(section.label)
-                }
+                label={t("browseAll") + " · " + t(section.label)}
                 href={section.href}
               />
             )}
           </Card>
         ))}
+        <Card>
+          <Text accessibilityRole="header" style={styles.section}>
+            {t("cenoteka")}
+          </Text>
+          {cenotekaQuery.error || publicCenoteka?.status === "unavailable" ? (
+            <ErrorState
+              error={cenotekaQuery.error}
+              message={t("cenotekaUnavailable")}
+              compact
+              retryDisabled={cenotekaQuery.isFetching}
+              retry={() => void refreshCenoteka()}
+            />
+          ) : !publicCenoteka ? (
+            <Loading />
+          ) : publicCenoteka.items.length ? (
+            publicCenoteka.items
+              .slice(0, 3)
+              .map((offer) => <ContentRow key={offer.id} item={offer} />)
+          ) : (
+            <Body>{t("cenotekaEmpty")}</Body>
+          )}
+          <TextLink label="Ponude dobavljača" href="/cenoteka/suppliers" />
+        </Card>
         {(signed || auth.status === "guest") && (
           <HomeDeadlines
             signed={signed}
