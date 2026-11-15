@@ -28,7 +28,14 @@ export default function Account() {
             <Body>{me.farm.displayName}</Body>
             <Body>{t(me.farm.completionState)}</Body>
           </Card>
-          <Button label={t("farm")} onPress={() => router.push("/farm")} />
+          <Button
+            label={
+              me.farm.hasProfile
+                ? "Izmenite podatke o gazdinstvu"
+                : "Dodajte gazdinstvo"
+            }
+            onPress={() => router.push("/farm")}
+          />
           <Button label={t("logout")} onPress={() => void auth.logout()} />
         </>
       )}

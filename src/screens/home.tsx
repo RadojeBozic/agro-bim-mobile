@@ -208,13 +208,21 @@ export default function Home() {
                   />
                 ))
             ) : section.label === "cenoteka" ? (
-              <Body>{t("cenotekaEmpty")}</Body>
+              <Body>
+                {signed
+                  ? "Trenutno nema novih ponuda relevantnih za vaše gazdinstvo."
+                  : t("cenotekaEmpty")}
+              </Body>
             ) : (
               <Empty />
             )}
             {section.href && (
               <TextLink
-                label={t("browseAll") + " · " + t(section.label)}
+                label={
+                  section.label === "cenoteka" && signed
+                    ? "Pregled javne Cenoteke"
+                    : t("browseAll") + " · " + t(section.label)
+                }
                 href={section.href}
               />
             )}

@@ -27,11 +27,22 @@ export function TrustLinks({
   if (!links.length && !showAppInfo) return null;
   return (
     <Card>
-      {links.length > 0 && (
+      {(links.length > 0 || showAppInfo) && (
         <>
           <Text accessibilityRole="header" style={styles.section}>
             {t("trust")}
           </Text>
+          {showAppInfo && (
+            <>
+              <ExternalLink
+                title="AgroBIM — web platforma"
+                url="https://agrobim.digital"
+              />
+              <Text style={styles.muted}>
+                Kompletan skup AgroBIM alata dostupan je na web platformi.
+              </Text>
+            </>
+          )}
           {links.map((link) => (
             <ExternalLink
               key={link.key}

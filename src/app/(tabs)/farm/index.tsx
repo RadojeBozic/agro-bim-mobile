@@ -17,7 +17,7 @@ import {
   Timestamp,
   styles,
 } from "../../../components/ui";
-import { ContentRow, Field } from "../../../components/content";
+import { ContentRow, ExternalLink, Field } from "../../../components/content";
 import { label } from "../../../content";
 import { t } from "../../../i18n";
 
@@ -28,6 +28,7 @@ export default function Farm() {
   const profile = useQuery({
     queryKey: ["private", auth.me?.user.id, "farm-profile"],
     enabled: signed,
+    refetchOnWindowFocus: "always",
     queryFn: ({ signal }) =>
       api.request("/me/farm-profile", profileSchema, { private: true, signal }),
   });
@@ -43,6 +44,7 @@ export default function Farm() {
   });
   const data = signed ? profile.data?.data : undefined;
   const basic = data?.basicProfile;
+  const hasProfile = data ? data.id !== null : auth.me?.farm.hasProfile;
   const refresh = () => {
     void profile.refetch({ cancelRefetch: false });
     if (auth.me?.access.capabilities.usePersonalizedFeed)
@@ -69,6 +71,28 @@ export default function Farm() {
                   "missing",
               )}
             </Body>
+            {hasProfile !== undefined && (
+              <>
+                <ExternalLink
+                  title={
+                    hasProfile
+                      ? "Izmenite podatke o gazdinstvu"
+                      : "Dodajte gazdinstvo"
+                  }
+                  url="https://agrobim.digital/finansijski-profil"
+                />
+                <Body>
+                  Na webu se po potrebi prijavite istim nalogom. Posle čuvanja
+                  vratite se ovde i osvežite profil.
+                </Body>
+                <Button
+                  label="Osvežite profil"
+                  onPress={refresh}
+                  disabled={profile.isFetching}
+                />
+              </>
+            )}
+
             <Field
               title="Registracija"
               value={label(basic?.registrationStatus)}
