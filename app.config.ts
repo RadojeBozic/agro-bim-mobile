@@ -16,6 +16,12 @@ const config: ExpoConfig = {
   userInterfaceStyle: "light",
   icon: "./assets/brand/mark.png",
   ...(environment === "development" ? { scheme: "agrobim-dev" } : {}),
+  ios: {
+    bundleIdentifier: "com.agrobim.digital",
+    buildNumber: "2",
+    infoPlist: { ITSAppUsesNonExemptEncryption: false },
+    icon: "./assets/brand/ios-icon.png",
+  },
   android: {
     package: identity.package,
     versionCode: identity.versionCode,
